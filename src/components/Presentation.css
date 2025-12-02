@@ -97,7 +97,7 @@
 
 /* Navigation Area Container */
 .navigation-area {
-  position: fixed;
+  position: absolute;
   bottom: 50px;
   left: 50%;
   transform: translateX(-50%);
@@ -263,7 +263,7 @@
 
 /* Keyboard Hint Container */
 .keyboard-hint-container {
-  position: fixed;
+  position: absolute;
   bottom: var(--space-8);
   left: var(--space-8);
 }
@@ -278,7 +278,7 @@
 
 /* Confidential Notice */
 .confidential-notice {
-  position: fixed;
+  position: absolute;
   bottom: var(--space-8);
   right: var(--space-8);
   font-size: var(--text-xs);

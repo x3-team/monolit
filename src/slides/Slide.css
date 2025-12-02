@@ -8627,6 +8627,10 @@
   display: flex;
   justify-content: center;
   align-items: center;
+   
+   @media (max-width: 1900px){
+    height: 760px;
+  }
    @media (max-width: 1024px){
     width: auto;
     justify-content: flex-start;
