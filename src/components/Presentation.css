@@ -263,7 +263,7 @@
 
 /* Keyboard Hint Container */
 .keyboard-hint-container {
-  position: absolute;
+  position: fixed;
   bottom: var(--space-8);
   left: var(--space-8);
 }
@@ -278,7 +278,7 @@
 
 /* Confidential Notice */
 .confidential-notice {
-  position: absolute;
+  position: fixed;
   bottom: var(--space-8);
   right: var(--space-8);
   font-size: var(--text-xs);
