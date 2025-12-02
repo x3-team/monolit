@@ -4978,6 +4978,10 @@
   background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 4px 8px rgba(16, 185, 129, 0.3));
+
+  @media (max-width: 470px){
+    font-size: 7rem !important;
+  }
 }
 
 .market-metric {
