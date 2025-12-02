@@ -8631,6 +8631,7 @@
     justify-content: flex-start;
     align-items: center;
     flex-direction: column;
+    height: auto;
   }
 }
 
