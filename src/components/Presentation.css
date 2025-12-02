@@ -5,6 +5,7 @@
   background: #FAF9F6;
   position: relative;
   overflow: auto;
+  min-height: 100vh;
 }
 .presentation__container {
   overflow: auto ! important;
