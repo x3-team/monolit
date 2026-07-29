@@ -167,6 +167,18 @@ export async function estimateDemoSpendForSessions(workspaceId: string) {
   return { estimated };
 }
 
+function netSpendCredits(
+  rows: { kind: string; credits: number }[]
+): number {
+  const spent = rows
+    .filter((e) => e.kind === "spend" || e.kind === "estimate" || e.kind === "deduct")
+    .reduce((s, e) => s + e.credits, 0);
+  const refund = rows
+    .filter((e) => e.kind === "refund")
+    .reduce((s, e) => s + e.credits, 0);
+  return Math.max(0, spent - refund);
+}
+
 export async function projectCostReport(workspaceId: string) {
   const workspace = await prisma.workspace.findUniqueOrThrow({
     where: { id: workspaceId },
@@ -182,42 +194,74 @@ export async function projectCostReport(workspaceId: string) {
       project: { select: { id: true, name: true } },
     },
     orderBy: { occurredAt: "desc" },
-    take: 200,
+    take: 500,
   });
+
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const monthLabel = monthStart.toLocaleDateString("ru-RU", {
+    month: "long",
+    year: "numeric",
+  });
+  const monthEvents = events.filter((e) => e.occurredAt >= monthStart);
+  const monthCredits = netSpendCredits(monthEvents);
+  const monthCostRub =
+    Math.round(monthCredits * workspace.creditPriceRub * 100) / 100;
 
   const byProject = projects.map((p) => {
     const rows = events.filter((e) => e.projectId === p.id);
-    const spentCredits = rows
-      .filter((e) => e.kind === "spend" || e.kind === "estimate" || e.kind === "deduct")
-      .reduce((s, e) => s + e.credits, 0);
-    const refundCredits = rows
-      .filter((e) => e.kind === "refund")
-      .reduce((s, e) => s + e.credits, 0);
-    const netCredits = Math.max(0, spentCredits - refundCredits);
+    const monthRows = monthEvents.filter((e) => e.projectId === p.id);
+    const netCredits = netSpendCredits(rows);
+    const monthNetCredits = netSpendCredits(monthRows);
     const costRub = netCredits * workspace.creditPriceRub;
+    const monthCostRubProject = monthNetCredits * workspace.creditPriceRub;
     const marginRub =
       p.budgetRub != null ? Math.round((p.budgetRub - costRub) * 100) / 100 : null;
+    const budgetUsedPct =
+      p.budgetRub && p.budgetRub > 0
+        ? Math.round((costRub / p.budgetRub) * 1000) / 10
+        : null;
     return {
       id: p.id,
       name: p.name,
       clientName: p.clientName,
       budgetRub: p.budgetRub,
       netCredits: Math.round(netCredits * 100) / 100,
+      monthCredits: Math.round(monthNetCredits * 100) / 100,
       costRub: Math.round(costRub * 100) / 100,
+      monthCostRub: Math.round(monthCostRubProject * 100) / 100,
       marginRub,
+      budgetUsedPct,
       eventCount: rows.length,
     };
   });
 
   const unallocated = events.filter((e) => !e.projectId);
-  const unallocatedCredits = unallocated
-    .filter((e) => e.kind === "spend" || e.kind === "estimate" || e.kind === "deduct")
-    .reduce((s, e) => s + e.credits, 0);
+  const unallocatedCredits = netSpendCredits(unallocated);
+  const totalBudgetRub = projects.reduce(
+    (s, p) => s + (p.budgetRub || 0),
+    0
+  );
+  const totalCostRub = byProject.reduce((s, p) => s + p.costRub, 0);
 
   return {
     creditPriceRub: workspace.creditPriceRub,
     costSyncMode: workspace.costSyncMode,
     costSyncedAt: workspace.costSyncedAt,
+    month: {
+      label: monthLabel,
+      credits: Math.round(monthCredits * 100) / 100,
+      costRub: monthCostRub,
+    },
+    totals: {
+      costRub: Math.round(totalCostRub * 100) / 100,
+      budgetRub: totalBudgetRub || null,
+      budgetUsedPct:
+        totalBudgetRub > 0
+          ? Math.round((totalCostRub / totalBudgetRub) * 1000) / 10
+          : null,
+    },
     projects: byProject,
     unallocatedCredits: Math.round(unallocatedCredits * 100) / 100,
     recent: events.slice(0, 40).map((e) => ({

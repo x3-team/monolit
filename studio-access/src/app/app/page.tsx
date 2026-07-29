@@ -41,14 +41,27 @@ type CostReport = {
   creditPriceRub: number;
   costSyncMode: string;
   costSyncedAt?: string | null;
+  month?: {
+    label: string;
+    credits: number;
+    costRub: number;
+  };
+  totals?: {
+    costRub: number;
+    budgetRub: number | null;
+    budgetUsedPct: number | null;
+  };
   projects: {
     id: string;
     name: string;
     clientName: string | null;
     budgetRub: number | null;
     netCredits: number;
+    monthCredits?: number;
     costRub: number;
+    monthCostRub?: number;
     marginRub: number | null;
+    budgetUsedPct?: number | null;
     eventCount: number;
   }[];
   unallocatedCredits: number;
@@ -62,6 +75,19 @@ type CostReport = {
     user: { name: string; email: string } | null;
   }[];
 };
+
+function formatRub(n: number) {
+  return new Intl.NumberFormat("ru-RU", {
+    maximumFractionDigits: n >= 100 ? 0 : 2,
+  }).format(n);
+}
+
+function budgetBarTone(pct: number | null | undefined) {
+  if (pct == null) return "bg-[var(--accent)]";
+  if (pct >= 100) return "bg-[var(--danger)]";
+  if (pct >= 80) return "bg-[var(--accent-2)]";
+  return "bg-[var(--accent)]";
+}
 
 declare global {
   interface Window {
@@ -533,11 +559,11 @@ export default function AppPage() {
           <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="font-display text-xl">AI cost by project</h2>
+                <h2 className="font-display text-xl">Затраты на генерации</h2>
                 <p className="mt-1 text-sm text-[var(--muted)]">
-                  Автоматически: Open → сессия → sync кредитов → ₽ на проект
+                  Сколько AI съел по проектам — без Excel
                   {costs?.costSyncedAt
-                    ? ` · last sync ${new Date(costs.costSyncedAt).toLocaleString()}`
+                    ? ` · обновлено ${new Date(costs.costSyncedAt).toLocaleString("ru-RU")}`
                     : ""}
                 </p>
               </div>
@@ -545,108 +571,201 @@ export default function AppPage() {
                 onClick={syncCosts}
                 className="rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[#042421]"
               >
-                Sync costs
+                Обновить
               </button>
             </div>
 
-            <form
-              onSubmit={saveCostSettings}
-              className="mt-4 grid gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-4 md:grid-cols-4"
-            >
-              <label className="text-sm">
-                <span className="text-[var(--muted)]">₽ / credit</span>
-                <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  className="mt-1 w-full rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2"
-                  value={creditPrice}
-                  onChange={(e) => setCreditPrice(e.target.value)}
-                />
-              </label>
-              <label className="text-sm">
-                <span className="text-[var(--muted)]">Sync mode</span>
-                <select
-                  className="mt-1 w-full rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2"
-                  value={syncMode}
-                  onChange={(e) =>
-                    setSyncMode(e.target.value === "api" ? "api" : "demo")
-                  }
-                >
-                  <option value="demo">Demo estimate (Open time)</option>
-                  <option value="api">Cloud API key</option>
-                </select>
-              </label>
-              <label className="text-sm md:col-span-2">
-                <span className="text-[var(--muted)]">
-                  Higgsfield Cloud key (KEY_ID:KEY_SECRET)
-                </span>
-                <input
-                  type="password"
-                  placeholder="optional — for api mode"
-                  className="mt-1 w-full rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                />
-              </label>
-              <button className="rounded-md border border-[var(--line)] px-3 py-2 text-sm md:col-span-4">
-                Save cost settings
-              </button>
-            </form>
-
-            <div className="mt-4 space-y-2">
-              {(costs?.projects || []).map((p) => (
+            <div className="mt-5 grid gap-4 lg:grid-cols-[1.1fr_1fr]">
+              <div className="relative overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel-2)] p-6">
                 <div
-                  key={p.id}
-                  className="grid gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] px-4 py-3 text-sm md:grid-cols-5"
-                >
-                  <div className="md:col-span-2">
-                    <p className="font-medium">{p.name}</p>
-                    <p className="text-[var(--muted)]">{p.clientName || "—"}</p>
+                  aria-hidden
+                  className="pointer-events-none absolute -right-8 -top-10 h-40 w-40 rounded-full bg-[var(--accent)]/10 blur-2xl"
+                />
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                  Потрачено на AI · {costs?.month?.label || "этот месяц"}
+                </p>
+                <p className="font-display mt-3 text-5xl tracking-tight sm:text-6xl">
+                  {formatRub(costs?.month?.costRub ?? 0)}
+                  <span className="ml-2 text-2xl text-[var(--muted)]">₽</span>
+                </p>
+                <p className="mt-3 text-sm text-[var(--muted)]">
+                  {costs?.month?.credits ?? 0} кредитов · курс{" "}
+                  {costs?.creditPriceRub ?? creditPrice} ₽/cr
+                  {costs?.costSyncMode === "demo"
+                    ? " · demo-оценка по времени Open"
+                    : " · Cloud API"}
+                </p>
+                {costs?.totals?.budgetRub ? (
+                  <div className="mt-5">
+                    <div className="mb-2 flex justify-between text-xs text-[var(--muted)]">
+                      <span>От бюджетов всех проектов</span>
+                      <span>
+                        {formatRub(costs.totals.costRub)} /{" "}
+                        {formatRub(costs.totals.budgetRub)} ₽
+                        {costs.totals.budgetUsedPct != null
+                          ? ` · ${costs.totals.budgetUsedPct}%`
+                          : ""}
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-black/30">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${budgetBarTone(costs.totals.budgetUsedPct)}`}
+                        style={{
+                          width: `${Math.min(100, costs.totals.budgetUsedPct || 0)}%`,
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[var(--muted)]">Credits</p>
-                    <p>{p.netCredits}</p>
+                ) : null}
+              </div>
+
+              <form
+                onSubmit={saveCostSettings}
+                className="grid content-start gap-3 rounded-2xl border border-[var(--line)] bg-[var(--panel-2)] p-4"
+              >
+                <p className="text-sm font-medium">Настройки курса</p>
+                <label className="text-sm">
+                  <span className="text-[var(--muted)]">₽ за 1 credit</span>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    className="mt-1 w-full rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2"
+                    value={creditPrice}
+                    onChange={(e) => setCreditPrice(e.target.value)}
+                  />
+                </label>
+                <label className="text-sm">
+                  <span className="text-[var(--muted)]">Источник данных</span>
+                  <select
+                    className="mt-1 w-full rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2"
+                    value={syncMode}
+                    onChange={(e) =>
+                      setSyncMode(e.target.value === "api" ? "api" : "demo")
+                    }
+                  >
+                    <option value="demo">Demo · оценка по Open</option>
+                    <option value="api">Cloud API key</option>
+                  </select>
+                </label>
+                <label className="text-sm">
+                  <span className="text-[var(--muted)]">
+                    KEY_ID:KEY_SECRET (для api)
+                  </span>
+                  <input
+                    type="password"
+                    placeholder="необязательно"
+                    className="mt-1 w-full rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                  />
+                </label>
+                <button className="rounded-md border border-[var(--line)] px-3 py-2 text-sm">
+                  Сохранить
+                </button>
+              </form>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              <p className="text-sm font-medium">Бюджет по проектам</p>
+              {(costs?.projects || []).map((p) => {
+                const pct = p.budgetUsedPct ?? null;
+                const barWidth = pct == null ? 0 : Math.min(100, pct);
+                return (
+                  <div
+                    key={p.id}
+                    className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] px-4 py-4"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium">{p.name}</p>
+                        <p className="text-sm text-[var(--muted)]">
+                          {p.clientName || "Без клиента"}
+                          {p.monthCostRub
+                            ? ` · этот месяц ${formatRub(p.monthCostRub)} ₽`
+                            : ""}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-display text-2xl">
+                          {formatRub(p.costRub)} ₽
+                        </p>
+                        <p className="text-xs text-[var(--muted)]">
+                          {p.netCredits} cr
+                          {p.budgetRub != null
+                            ? ` · бюджет ${formatRub(p.budgetRub)} ₽`
+                            : " · бюджет не задан"}
+                        </p>
+                      </div>
+                    </div>
+                    {p.budgetRub != null ? (
+                      <div className="mt-3">
+                        <div className="mb-1.5 flex justify-between text-xs">
+                          <span
+                            className={
+                              pct != null && pct >= 80
+                                ? "text-[var(--accent-2)]"
+                                : "text-[var(--muted)]"
+                            }
+                          >
+                            {pct != null && pct >= 100
+                              ? "Бюджет превышен"
+                              : pct != null && pct >= 80
+                                ? "Близко к лимиту"
+                                : "Использование бюджета AI"}
+                          </span>
+                          <span className="text-[var(--muted)]">
+                            {pct ?? 0}%
+                            {p.marginRub != null
+                              ? ` · остаток ${formatRub(p.marginRub)} ₽`
+                              : ""}
+                          </span>
+                        </div>
+                        <div className="h-2.5 overflow-hidden rounded-full bg-black/35">
+                          <div
+                            className={`h-full rounded-full transition-all duration-700 ${budgetBarTone(pct)}`}
+                            style={{ width: `${barWidth}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-xs text-[var(--muted)]">
+                        Задайте бюджет проекту — появится прогресс-бар
+                      </p>
+                    )}
                   </div>
-                  <div>
-                    <p className="text-[var(--muted)]">AI cost</p>
-                    <p>{p.costRub} ₽</p>
-                  </div>
-                  <div>
-                    <p className="text-[var(--muted)]">Margin</p>
-                    <p>
-                      {p.marginRub == null
-                        ? "—"
-                        : `${p.marginRub} ₽${p.budgetRub != null ? ` / ${p.budgetRub}` : ""}`}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               {!costs?.projects?.length && (
                 <p className="text-sm text-[var(--muted)]">
-                  No cost data yet — Open Higgsfield on a project, then Sync.
+                  Нет проектов — создайте выше, откройте Higgsfield, нажмите
+                  «Обновить».
                 </p>
               )}
               {(costs?.unallocatedCredits || 0) > 0 && (
                 <p className="text-sm text-amber-200/90">
-                  Unallocated: {costs?.unallocatedCredits} credits (spend outside
-                  an Open session)
+                  Вне проектов: {costs?.unallocatedCredits} cr (Open без
+                  выбранного проекта)
                 </p>
               )}
             </div>
 
             {!!costs?.recent?.length && (
-              <ul className="mt-4 space-y-1 text-sm text-[var(--muted)]">
-                {costs.recent.slice(0, 12).map((e) => (
-                  <li key={e.id}>
-                    {new Date(e.occurredAt).toLocaleString()} · {e.kind} ·{" "}
-                    {e.credits} cr
-                    {e.project ? ` · ${e.project.name}` : " · unallocated"}
-                    {e.user ? ` · ${e.user.email}` : ""}
-                    {e.description ? ` · ${e.description}` : ""}
-                  </li>
-                ))}
-              </ul>
+              <details className="mt-5">
+                <summary className="cursor-pointer text-sm text-[var(--muted)]">
+                  История списаний
+                </summary>
+                <ul className="mt-3 space-y-1 text-sm text-[var(--muted)]">
+                  {costs.recent.slice(0, 12).map((e) => (
+                    <li key={e.id}>
+                      {new Date(e.occurredAt).toLocaleString("ru-RU")} · {e.kind}{" "}
+                      · {e.credits} cr
+                      {e.project ? ` · ${e.project.name}` : " · вне проекта"}
+                      {e.user ? ` · ${e.user.email}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </details>
             )}
           </section>
 
@@ -752,19 +871,38 @@ export default function AppPage() {
 
       {!isAdmin && costs && (
         <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
-          <h2 className="font-display text-xl">Your project spend</h2>
+          <h2 className="font-display text-xl">Ваши генерации</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Кредиты, списанные пока вы работали через StudioGate
+            Кредиты по проектам, пока вы работали через StudioGate
           </p>
-          <div className="mt-4 space-y-2">
+          <p className="font-display mt-4 text-4xl">
+            {formatRub(costs.month?.costRub ?? 0)}{" "}
+            <span className="text-lg text-[var(--muted)]">₽ в этом месяце</span>
+          </p>
+          <div className="mt-4 space-y-3">
             {costs.projects
               .filter((p) => p.eventCount > 0)
               .map((p) => (
                 <div
                   key={p.id}
-                  className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] px-4 py-3 text-sm"
+                  className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] px-4 py-3"
                 >
-                  {p.name}: {p.netCredits} credits · ~{p.costRub} ₽
+                  <div className="flex justify-between gap-3 text-sm">
+                    <span>{p.name}</span>
+                    <span className="font-medium">
+                      {formatRub(p.costRub)} ₽ · {p.netCredits} cr
+                    </span>
+                  </div>
+                  {p.budgetRub != null && (
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/30">
+                      <div
+                        className={`h-full rounded-full ${budgetBarTone(p.budgetUsedPct)}`}
+                        style={{
+                          width: `${Math.min(100, p.budgetUsedPct || 0)}%`,
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
           </div>
