@@ -10,10 +10,13 @@
 1. Открыть http://localhost:3001 (или ваш деплой)
 2. Войти: `owner@studio.local` / `owner123456`
 3. Mark connected (demo) на Figma и Higgsfield
-4. Invite freelancer
-5. Показать Open + Audit log
-6. Revoke в один клик
-7. Для live: `npm run desktop` → Connect team-аккаунтом (не billing)
+4. Показать **Projects** (уже есть Nike / Fintech) → выбрать проект
+5. Open Higgsfield → **Sync costs** → кредиты и ₽ на проекте vs бюджет
+6. Invite freelancer
+7. Revoke в один клик
+8. Для live: `npm run desktop` → Connect team-аккаунтом (не billing)
+
+Доп. оффер на созвоне: «Не только доступы — ещё автоматический ценник генераций по проектам, без Excel.»
 
 ## Цена
 - Пилот 2 недели: **9 900–15 000 ₽**

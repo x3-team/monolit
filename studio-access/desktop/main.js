@@ -241,9 +241,12 @@ async function connectTool({ toolId, loginUrl, kind }) {
   return { ok: true };
 }
 
-async function openTool(toolId) {
+async function openTool(toolId, projectId) {
+  const qs = projectId
+    ? `?projectId=${encodeURIComponent(projectId)}`
+    : "";
   const result = await mainWindow.webContents.executeJavaScript(
-    `fetch(${JSON.stringify(`/api/tools/${toolId}/session`)}, {
+    `fetch(${JSON.stringify(`/api/tools/${toolId}/session${qs}`)}, {
       credentials: 'include'
     }).then(r => r.json().then(data => ({ status: r.status, data })))`
   );
@@ -330,9 +333,12 @@ app.whenReady().then(() => {
     }
   });
 
-  ipcMain.handle("studiogate:openTool", async (_event, toolId) => {
+  ipcMain.handle("studiogate:openTool", async (_event, payload) => {
     try {
-      return await openTool(toolId);
+      const toolId = typeof payload === "string" ? payload : payload?.toolId;
+      const projectId =
+        typeof payload === "string" ? null : payload?.projectId || null;
+      return await openTool(toolId, projectId);
     } catch (e) {
       return { ok: false, error: e.message || "Open failed" };
     }

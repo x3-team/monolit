@@ -8,15 +8,25 @@ datasource db {
 }
 
 model Workspace {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  name                 String
+  /// Estimated ₽ per Higgsfield credit (studio sets from their top-up invoice)
+  creditPriceRub       Float    @default(2)
+  /// demo | api — demo auto-estimates from Open sessions; api imports Cloud key transactions
+  costSyncMode         String   @default("demo")
+  /// Encrypted KEY_ID:KEY_SECRET for cloud.higgsfield.ai (optional)
+  higgsfieldApiKeyEnc  String?
+  costSyncedAt         DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   users           User[]
   toolConnections ToolConnection[]
   invites         Invite[]
   accessLogs      AccessLog[]
+  projects        Project[]
+  usageSessions   UsageSession[]
+  spendEvents     SpendEvent[]
 }
 
 model User {
@@ -31,8 +41,10 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  grants     ToolGrant[]
-  accessLogs AccessLog[]
+  grants        ToolGrant[]
+  accessLogs    AccessLog[]
+  usageSessions UsageSession[]
+  spendEvents   SpendEvent[]
 
   @@index([workspaceId])
 }
@@ -50,8 +62,9 @@ model ToolConnection {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  grants     ToolGrant[]
-  accessLogs AccessLog[]
+  grants        ToolGrant[]
+  accessLogs    AccessLog[]
+  usageSessions UsageSession[]
 
   @@unique([workspaceId, kind])
   @@index([workspaceId])
@@ -95,4 +108,69 @@ model AccessLog {
   createdAt        DateTime        @default(now())
 
   @@index([workspaceId, createdAt])
+}
+
+/// Client / production job — spend is attributed here
+model Project {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  clientName  String?
+  budgetRub   Float?
+  isArchived  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  usageSessions UsageSession[]
+  spendEvents   SpendEvent[]
+
+  @@index([workspaceId])
+}
+
+/// Open window for a tool tied to a project (who worked when)
+model UsageSession {
+  id               String         @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projectId        String
+  project          Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  toolConnectionId String
+  toolConnection   ToolConnection @relation(fields: [toolConnectionId], references: [id], onDelete: Cascade)
+  startedAt        DateTime       @default(now())
+  endedAt          DateTime?
+  createdAt        DateTime       @default(now())
+
+  spendEvents SpendEvent[]
+
+  @@index([workspaceId, startedAt])
+  @@index([toolConnectionId, startedAt])
+  @@index([userId, startedAt])
+}
+
+/// Credit spend / refund attributed to a project (auto-synced or demo-estimated)
+model SpendEvent {
+  id             String        @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projectId      String?
+  project        Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  usageSessionId String?
+  usageSession   UsageSession? @relation(fields: [usageSessionId], references: [id], onDelete: SetNull)
+  provider       String        @default("HIGGSFIELD")
+  externalId     String
+  kind           String // spend | refund | grant | deduct | estimate
+  credits        Float
+  description    String?
+  occurredAt     DateTime
+  rawJson        String?
+  createdAt      DateTime      @default(now())
+
+  @@unique([workspaceId, provider, externalId])
+  @@index([workspaceId, occurredAt])
+  @@index([projectId])
 }

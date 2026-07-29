@@ -30,6 +30,39 @@ type Log = {
   toolConnection?: { kind: string; label: string } | null;
 };
 
+type Project = {
+  id: string;
+  name: string;
+  clientName: string | null;
+  budgetRub: number | null;
+};
+
+type CostReport = {
+  creditPriceRub: number;
+  costSyncMode: string;
+  costSyncedAt?: string | null;
+  projects: {
+    id: string;
+    name: string;
+    clientName: string | null;
+    budgetRub: number | null;
+    netCredits: number;
+    costRub: number;
+    marginRub: number | null;
+    eventCount: number;
+  }[];
+  unallocatedCredits: number;
+  recent: {
+    id: string;
+    kind: string;
+    credits: number;
+    description: string | null;
+    occurredAt: string;
+    project: { id: string; name: string } | null;
+    user: { name: string; email: string } | null;
+  }[];
+};
+
 declare global {
   interface Window {
     studioGate?: {
@@ -38,7 +71,10 @@ declare global {
         loginUrl: string;
         kind: string;
       }) => Promise<{ ok: boolean; error?: string }>;
-      openTool: (toolId: string) => Promise<{ ok: boolean; error?: string }>;
+      openTool: (
+        toolId: string,
+        projectId?: string | null
+      ) => Promise<{ ok: boolean; error?: string }>;
     };
   }
 }
@@ -54,6 +90,9 @@ export default function AppPage() {
   const [tools, setTools] = useState<Tool[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [logs, setLogs] = useState<Log[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [costs, setCosts] = useState<CostReport | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,6 +100,13 @@ export default function AppPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [invitePassword, setInvitePassword] = useState("freelancer123");
   const [inviteTools, setInviteTools] = useState<string[]>(["FIGMA", "HIGGSFIELD"]);
+
+  const [projectName, setProjectName] = useState("");
+  const [projectClient, setProjectClient] = useState("");
+  const [projectBudget, setProjectBudget] = useState("");
+  const [creditPrice, setCreditPrice] = useState("2");
+  const [syncMode, setSyncMode] = useState<"demo" | "api">("demo");
+  const [apiKey, setApiKey] = useState("");
 
   const isAdmin = user?.role === "OWNER" || user?.role === "ADMIN";
   const hasDesktop = typeof window !== "undefined" && Boolean(window.studioGate);
@@ -74,16 +120,33 @@ export default function AppPage() {
     setUser(me.user);
     setWorkspace(me.workspace?.name || "");
 
-    const toolsRes = await fetch("/api/tools").then((r) => r.json());
+    const [toolsRes, projectsRes] = await Promise.all([
+      fetch("/api/tools").then((r) => r.json()),
+      fetch("/api/projects").then((r) => r.json()),
+    ]);
     setTools(toolsRes.tools || []);
+    const nextProjects: Project[] = projectsRes.projects || [];
+    setProjects(nextProjects);
+    if (!selectedProjectId && nextProjects[0]) {
+      setSelectedProjectId(nextProjects[0].id);
+    }
 
     if (me.user.role !== "MEMBER") {
-      const [membersRes, logsRes] = await Promise.all([
+      const [membersRes, logsRes, costsRes] = await Promise.all([
         fetch("/api/members").then((r) => r.json()),
         fetch("/api/logs").then((r) => r.json()),
+        fetch("/api/costs").then((r) => r.json()),
       ]);
       setMembers(membersRes.members || []);
       setLogs(logsRes.logs || []);
+      if (!costsRes.error) {
+        setCosts(costsRes);
+        setCreditPrice(String(costsRes.creditPriceRub ?? 2));
+        setSyncMode(costsRes.costSyncMode === "api" ? "api" : "demo");
+      }
+    } else {
+      const costsRes = await fetch("/api/costs").then((r) => r.json());
+      if (!costsRes.error) setCosts(costsRes);
     }
   }
 
@@ -120,7 +183,6 @@ export default function AppPage() {
   }
 
   async function mockConnect(tool: Tool) {
-    // Sales/demo fallback without Electron: store empty-ish mock cookies marker
     const res = await fetch(`/api/tools/${tool.id}/session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -148,17 +210,43 @@ export default function AppPage() {
   async function openTool(tool: Tool) {
     setError(null);
     setMessage(null);
+
+    const projectId =
+      tool.kind === "HIGGSFIELD" ? selectedProjectId || null : null;
+    if (tool.kind === "HIGGSFIELD" && !projectId) {
+      setError("Сначала создайте/выберите проект — иначе некуда списать кредиты");
+      return;
+    }
+
     if (!window.studioGate) {
+      const qs = projectId ? `?projectId=${encodeURIComponent(projectId)}` : "";
+      const res = await fetch(`/api/tools/${tool.id}/session${qs}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Open failed");
+        return;
+      }
+      const projectLabel =
+        projects.find((p) => p.id === projectId)?.name || data.projectName;
       setMessage(
-        `Web demo: доступ к ${tool.label} выдан. Реальное окно открывается в desktop app.`
+        projectLabel
+          ? `Web demo: ${tool.label} открыт на проект «${projectLabel}». Реальное окно — в desktop.`
+          : `Web demo: доступ к ${tool.label} выдан.`
       );
-      await fetch(`/api/tools/${tool.id}/session`);
       await refresh();
       return;
     }
-    const result = await window.studioGate.openTool(tool.id);
+
+    const result = await window.studioGate.openTool(tool.id, projectId);
     if (!result.ok) setError(result.error || "Open failed");
-    else setMessage(`Opened ${tool.label}`);
+    else {
+      const projectLabel = projects.find((p) => p.id === projectId)?.name;
+      setMessage(
+        projectLabel
+          ? `Opened ${tool.label} · ${projectLabel}`
+          : `Opened ${tool.label}`
+      );
+    }
     await refresh();
   }
 
@@ -196,6 +284,73 @@ export default function AppPage() {
     await refresh();
   }
 
+  async function createProject(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const res = await fetch("/api/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: projectName,
+        clientName: projectClient || null,
+        budgetRub: projectBudget ? Number(projectBudget) : null,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || "Project create failed");
+      return;
+    }
+    setProjectName("");
+    setProjectClient("");
+    setProjectBudget("");
+    setSelectedProjectId(data.project.id);
+    setMessage(`Project «${data.project.name}» created`);
+    await refresh();
+  }
+
+  async function saveCostSettings(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const res = await fetch("/api/costs", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        creditPriceRub: Number(creditPrice),
+        costSyncMode: syncMode,
+        ...(apiKey.trim() ? { higgsfieldApiKey: apiKey.trim() } : {}),
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || "Settings failed");
+      return;
+    }
+    setApiKey("");
+    setMessage("Cost settings saved");
+    await refresh();
+  }
+
+  async function syncCosts() {
+    setError(null);
+    const res = await fetch("/api/costs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || "Sync failed");
+      return;
+    }
+    setCosts(data.report);
+    setMessage(
+      data.sync?.warning
+        ? `Synced (${data.sync.source}): ${data.sync.warning}`
+        : `Synced ${data.sync?.imported || 0} rows · mode ${data.sync?.source}`
+    );
+  }
+
   if (!user) {
     return <main className="p-8 text-[var(--muted)]">Loading workspace…</main>;
   }
@@ -231,6 +386,31 @@ export default function AppPage() {
         </p>
       )}
 
+      <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl">Active project</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Перед Open Higgsfield выберите проект — кредиты спишутся на него
+              автоматически
+            </p>
+          </div>
+          <select
+            className="min-w-[220px] rounded-md border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2"
+            value={selectedProjectId}
+            onChange={(e) => setSelectedProjectId(e.target.value)}
+          >
+            <option value="">Select project…</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+                {p.clientName ? ` · ${p.clientName}` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      </section>
+
       <section className="grid gap-4 md:grid-cols-2">
         {tools.map((tool) => (
           <div
@@ -246,6 +426,11 @@ export default function AppPage() {
                     ? ` · ${new Date(tool.sessionUpdatedAt).toLocaleString()}`
                     : ""}
                 </p>
+                {tool.kind === "HIGGSFIELD" && (
+                  <p className="mt-2 text-xs text-[var(--accent)]">
+                    Open requires a project (cost tracking)
+                  </p>
+                )}
               </div>
               <span className="rounded-md bg-[var(--panel-2)] px-2 py-1 text-xs">
                 {tool.kind}
@@ -281,6 +466,190 @@ export default function AppPage() {
 
       {isAdmin && (
         <>
+          <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
+            <h2 className="font-display text-xl">Projects</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Ценник на генерацию: бюджет проекта vs фактические AI-кредиты
+            </p>
+            <form
+              onSubmit={createProject}
+              className="mt-4 grid gap-3 md:grid-cols-4"
+            >
+              <input
+                placeholder="Project name"
+                className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2 md:col-span-1"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                required
+              />
+              <input
+                placeholder="Client"
+                className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2"
+                value={projectClient}
+                onChange={(e) => setProjectClient(e.target.value)}
+              />
+              <input
+                placeholder="Budget ₽"
+                type="number"
+                min="0"
+                className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2"
+                value={projectBudget}
+                onChange={(e) => setProjectBudget(e.target.value)}
+              />
+              <button className="rounded-md bg-[var(--accent-2)] px-3 py-2 font-semibold text-[#1d1400]">
+                Add project
+              </button>
+            </form>
+            <div className="mt-4 space-y-2">
+              {projects.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] px-4 py-3 text-sm"
+                >
+                  <div>
+                    <p className="font-medium">{p.name}</p>
+                    <p className="text-[var(--muted)]">
+                      {p.clientName || "—"}
+                      {p.budgetRub != null ? ` · budget ${p.budgetRub} ₽` : ""}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProjectId(p.id)}
+                    className="rounded-md border border-[var(--line)] px-3 py-1.5"
+                  >
+                    Use for Open
+                  </button>
+                </div>
+              ))}
+              {!projects.length && (
+                <p className="text-sm text-[var(--muted)]">
+                  No projects yet — create one before opening Higgsfield.
+                </p>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-display text-xl">AI cost by project</h2>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  Автоматически: Open → сессия → sync кредитов → ₽ на проект
+                  {costs?.costSyncedAt
+                    ? ` · last sync ${new Date(costs.costSyncedAt).toLocaleString()}`
+                    : ""}
+                </p>
+              </div>
+              <button
+                onClick={syncCosts}
+                className="rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[#042421]"
+              >
+                Sync costs
+              </button>
+            </div>
+
+            <form
+              onSubmit={saveCostSettings}
+              className="mt-4 grid gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-4 md:grid-cols-4"
+            >
+              <label className="text-sm">
+                <span className="text-[var(--muted)]">₽ / credit</span>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  className="mt-1 w-full rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2"
+                  value={creditPrice}
+                  onChange={(e) => setCreditPrice(e.target.value)}
+                />
+              </label>
+              <label className="text-sm">
+                <span className="text-[var(--muted)]">Sync mode</span>
+                <select
+                  className="mt-1 w-full rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2"
+                  value={syncMode}
+                  onChange={(e) =>
+                    setSyncMode(e.target.value === "api" ? "api" : "demo")
+                  }
+                >
+                  <option value="demo">Demo estimate (Open time)</option>
+                  <option value="api">Cloud API key</option>
+                </select>
+              </label>
+              <label className="text-sm md:col-span-2">
+                <span className="text-[var(--muted)]">
+                  Higgsfield Cloud key (KEY_ID:KEY_SECRET)
+                </span>
+                <input
+                  type="password"
+                  placeholder="optional — for api mode"
+                  className="mt-1 w-full rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                />
+              </label>
+              <button className="rounded-md border border-[var(--line)] px-3 py-2 text-sm md:col-span-4">
+                Save cost settings
+              </button>
+            </form>
+
+            <div className="mt-4 space-y-2">
+              {(costs?.projects || []).map((p) => (
+                <div
+                  key={p.id}
+                  className="grid gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] px-4 py-3 text-sm md:grid-cols-5"
+                >
+                  <div className="md:col-span-2">
+                    <p className="font-medium">{p.name}</p>
+                    <p className="text-[var(--muted)]">{p.clientName || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[var(--muted)]">Credits</p>
+                    <p>{p.netCredits}</p>
+                  </div>
+                  <div>
+                    <p className="text-[var(--muted)]">AI cost</p>
+                    <p>{p.costRub} ₽</p>
+                  </div>
+                  <div>
+                    <p className="text-[var(--muted)]">Margin</p>
+                    <p>
+                      {p.marginRub == null
+                        ? "—"
+                        : `${p.marginRub} ₽${p.budgetRub != null ? ` / ${p.budgetRub}` : ""}`}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {!costs?.projects?.length && (
+                <p className="text-sm text-[var(--muted)]">
+                  No cost data yet — Open Higgsfield on a project, then Sync.
+                </p>
+              )}
+              {(costs?.unallocatedCredits || 0) > 0 && (
+                <p className="text-sm text-amber-200/90">
+                  Unallocated: {costs?.unallocatedCredits} credits (spend outside
+                  an Open session)
+                </p>
+              )}
+            </div>
+
+            {!!costs?.recent?.length && (
+              <ul className="mt-4 space-y-1 text-sm text-[var(--muted)]">
+                {costs.recent.slice(0, 12).map((e) => (
+                  <li key={e.id}>
+                    {new Date(e.occurredAt).toLocaleString()} · {e.kind} ·{" "}
+                    {e.credits} cr
+                    {e.project ? ` · ${e.project.name}` : " · unallocated"}
+                    {e.user ? ` · ${e.user.email}` : ""}
+                    {e.description ? ` · ${e.description}` : ""}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
           <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
             <h2 className="font-display text-xl">Invite freelancer</h2>
             <form
@@ -379,6 +748,27 @@ export default function AppPage() {
             </ul>
           </section>
         </>
+      )}
+
+      {!isAdmin && costs && (
+        <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
+          <h2 className="font-display text-xl">Your project spend</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Кредиты, списанные пока вы работали через StudioGate
+          </p>
+          <div className="mt-4 space-y-2">
+            {costs.projects
+              .filter((p) => p.eventCount > 0)
+              .map((p) => (
+                <div
+                  key={p.id}
+                  className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] px-4 py-3 text-sm"
+                >
+                  {p.name}: {p.netCredits} credits · ~{p.costRub} ₽
+                </div>
+              ))}
+          </div>
+        </section>
       )}
     </main>
   );

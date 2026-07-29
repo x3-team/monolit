@@ -75,11 +75,13 @@ export async function POST(request: Request, { params }: Params) {
   }
 }
 
-/** Freelancer/desktop asks for launch payload */
-export async function GET(_request: Request, { params }: Params) {
+/** Freelancer/desktop asks for launch payload. Higgsfield requires ?projectId= for cost attribution. */
+export async function GET(request: Request, { params }: Params) {
   try {
     const session = await requireSession();
     const { id } = await params;
+    const url = new URL(request.url);
+    const projectId = url.searchParams.get("projectId");
 
     const tool = await prisma.toolConnection.findFirst({
       where: { id, workspaceId: session.workspaceId, isActive: true },
@@ -100,6 +102,45 @@ export async function GET(_request: Request, { params }: Params) {
       return err("Owner has not connected this tool yet", 409);
     }
 
+    let usageSessionId: string | null = null;
+    let projectName: string | null = null;
+
+    if (tool.kind === "HIGGSFIELD") {
+      if (!projectId) {
+        return err("Select a project before opening Higgsfield", 400);
+      }
+      const project = await prisma.project.findFirst({
+        where: {
+          id: projectId,
+          workspaceId: session.workspaceId,
+          isArchived: false,
+        },
+      });
+      if (!project) return err("Project not found", 404);
+
+      // Close previous open sessions for this user+tool (one active window per person)
+      await prisma.usageSession.updateMany({
+        where: {
+          workspaceId: session.workspaceId,
+          userId: session.id,
+          toolConnectionId: id,
+          endedAt: null,
+        },
+        data: { endedAt: new Date() },
+      });
+
+      const usage = await prisma.usageSession.create({
+        data: {
+          workspaceId: session.workspaceId,
+          projectId: project.id,
+          userId: session.id,
+          toolConnectionId: id,
+        },
+      });
+      usageSessionId = usage.id;
+      projectName = project.name;
+    }
+
     const payload = decryptJson<ToolSessionPayload>(tool.encryptedSession);
 
     await prisma.accessLog.create({
@@ -108,6 +149,9 @@ export async function GET(_request: Request, { params }: Params) {
         userId: session.id,
         toolConnectionId: id,
         action: "tool.opened",
+        metadata: projectId
+          ? JSON.stringify({ projectId, usageSessionId })
+          : null,
       },
     });
 
@@ -121,6 +165,9 @@ export async function GET(_request: Request, { params }: Params) {
       },
       session: payload,
       partition: `studiogate:${session.workspaceId}:${tool.kind}:${session.id}`,
+      usageSessionId,
+      projectId: projectId || null,
+      projectName,
     });
   } catch (error) {
     return handleError(error);

@@ -17,10 +17,12 @@ Design / AI / production studios that today:
    - Invite freelancers and assign tools
    - One-click revoke
    - Audit log
+   - **Projects + AI cost by project** (Higgsfield) — see [COST.md](./COST.md)
 2. **Desktop shell** (`npm run desktop`)
    - Special controlled browser window
    - `Connect` captures team-account session cookies
    - `Open` launches tool for a freelancer in an isolated partition
+   - Higgsfield Open requires an active **project** for spend attribution
 
 > Sales tip: use **team/member accounts without billing**, keep owner/billing accounts offline from StudioGate.
 
