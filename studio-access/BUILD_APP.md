@@ -1,46 +1,32 @@
-# Как собрать простое приложение StudioGate
+# Как собрать приложение с уже вшитым сервером
 
-Цель: дизайнеры получают обычный файл приложения, а не команды в терминале.
+## Правильный UX для дизайнера
+Скачал → открыл → вошёл → Open Figma.  
+**Без ручного ввода ссылки.**
 
-## На вашем Mac (самый частый случай)
+## Как это сделать
 
-```bash
-cd studio-access
-npm install
-npm run dist:mac
+1. Поднимите StudioGate на VPS, получите URL, например `https://gate.yourstudio.com`
+2. Пропишите его в `desktop/config.json`:
+
+```json
+{
+  "serverUrl": "https://gate.yourstudio.com",
+  "productName": "StudioGate",
+  "allowServerOverride": false
+}
 ```
 
-Готовые файлы появятся в `studio-access/release/`:
-- `StudioGate-x.y.z.dmg` — для установки
-- или `.app` / `.zip`
-
-Отправьте дизайнерам `.dmg` + ссылку студии + их логин/пароль StudioGate.
-
-## Windows
-
-На Windows-машине:
+3. Соберите установщик:
 
 ```bash
+# Mac
+npm run dist:mac
+
+# Windows
 npm run dist:win
 ```
 
-Получите `StudioGate Setup.exe` или portable `.exe` в `release/`.
+4. Отдайте команде файл из `release/`
 
-## Linux (проверка сборки)
-
-```bash
-npm run dist:linux
-```
-
-## Что говорит дизайнер после этого
-
-См. `FOR_DESIGNERS.md`:
-1. Скачал приложение
-2. Вставил ссылку студии
-3. Вошёл
-4. Open Figma
-
-## Важно
-
-Сервер студии (`npm run dev` / tunnel / облако) должен быть запущен.  
-Приложение — только клиент. Без работающей ссылки студии Open не откроет Figma.
+Готово: приложение уже “знает”, куда подключаться.
