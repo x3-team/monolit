@@ -50,3 +50,7 @@ next-env.d.ts
 
 # electron
 /dist
+/release
+/*.AppImage
+/*.dmg
+/*.exe
