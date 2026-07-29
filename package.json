@@ -1,40 +1,54 @@
 {
-  "name": "monolit-presentation",
-  "version": "1.0.0",
+  "name": "smartdoc-ai",
+  "version": "0.1.0",
   "private": true,
-  "description": "Modern presentation template based on Monolit design system",
-  "dependencies": {
-    "framer-motion": "^12.23.24",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1"
-  },
+  "description": "SmartDoc AI — B2B document OCR/LLM extraction and CRM/ERP delivery",
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "export:pdf": "node scripts/export-pdf.js"
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "test:unit": "tsx --test src/lib/validation.test.ts"
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app"
-    ]
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^3.0.3",
+    "bullmq": "^5.81.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "ioredis": "^5.11.1",
+    "jose": "^6.2.4",
+    "lucide-react": "^1.27.0",
+    "next": "15.5.22",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "tailwind-merge": "^3.6.0",
+    "uuid": "^14.0.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "pdf-lib": "^1.17.1",
-    "puppeteer": "^24.30.0"
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/uuid": "^10.0.0",
+    "dotenv": "^17.4.2",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.22",
+    "prisma": "^5.22.0",
+    "tailwindcss": "^4",
+    "tsx": "^4.20.5",
+    "typescript": "^5"
   }
 }

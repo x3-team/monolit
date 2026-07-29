@@ -1,0 +1,18 @@
+# SmartDoc AI — Cursor instructions
+
+Build and extend SmartDoc AI according to `prompts/PRD.md`.
+
+## Priorities
+
+1. Keep the processing pipeline reliable: upload → queue → OCR → LLM → validate → export.
+2. Prefer typed Prisma models and Zod validation at API boundaries.
+3. When Yandex credentials are missing, keep mock mode working for demos.
+4. Do not store uploaded files longer than needed — delete after processing.
+5. Preserve RBAC: Admin manages API keys; Managers can review/confirm documents.
+
+## Conventions
+
+* App Router under `src/app`
+* Shared libs under `src/lib`
+* UI primitives under `src/components/ui`
+* Env vars documented in `.env.example`

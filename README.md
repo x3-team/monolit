@@ -1,179 +1,86 @@
-# Monolit Presentation Template
+# SmartDoc AI
 
-A modern, minimalist React-based presentation template inspired by the Monolit design system. Perfect for seed stage pitch decks and professional presentations.
+B2B SaaS for document data extraction (passports, invoices, contracts, acts) using **Yandex Vision OCR** + **YandexGPT**, with schema-normalized JSON delivery to AmoCRM / Bitrix24 / 1C.
 
-## Features
+## Stack
 
-- Clean, elegant design with fluid typography
-- Keyboard navigation (Arrow keys, Space, Home, End)
-- Touch/click navigation
-- Responsive layout for all screen sizes
-- Dark mode support
-- Reduced motion support for accessibility
-- Smooth slide transitions
+- Next.js 15 (App Router) + TypeScript + Tailwind CSS
+- PostgreSQL + Prisma ORM
+- Redis + BullMQ (falls back to inline queue if Redis is down)
+- Yandex Cloud OCR / Foundation Models (mock mode without credentials)
 
-## Design System
-
-Based on the Monolit website design patterns:
-- **Colors**: Warm beige background (#F0EEE6), black text
-- **Typography**: Inter font family with fluid scaling
-- **Layout**: Minimalist, content-focused design
-- **Branding**: MONOLIT logo (MONO in bold, LIT in light weight)
-
-## Getting Started
-
-### Installation
+## Quick start
 
 ```bash
+# 1. Start infra
+docker compose up -d
+
+# 2. Env
+cp .env.example .env
+
+# 3. Install & migrate
 npm install
+npx prisma migrate dev --name init
+npm run db:seed
+
+# 4. Run
+npm run dev
 ```
 
-### Development
+Open [http://localhost:3000](http://localhost:3000).
+
+Demo login (after seed):
+
+- Email: `admin@smartdoc.local`
+- Password: `admin123456`
+
+## Core flows
+
+1. Create a **Pipeline** with JSON schema fields (`inn_seller`, amounts, dates, …).
+2. Upload via UI drag & drop or:
 
 ```bash
-npm start
+curl -X POST "http://localhost:3000/api/v1/documents/upload" \
+  -H "Authorization: Bearer sd_YOUR_API_KEY" \
+  -F "pipelineId=PIPELINE_ID" \
+  -F "file=@invoice.pdf"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view in your browser.
-
-### Build for Production
+3. Public ingest webhook:
 
 ```bash
-npm run build
+curl -X POST "http://localhost:3000/api/v1/ingest/PIPELINE_ID" \
+  -H "Authorization: Bearer sd_YOUR_API_KEY" \
+  -H "Content-Type: application/pdf" \
+  -H "X-Filename: invoice.pdf" \
+  --data-binary @invoice.pdf
 ```
 
-Creates an optimized production build in the `build` folder.
+4. Review `NEEDS_REVIEW` docs side-by-side, edit fields, **Confirm & Send to 1C/CRM**.
 
-## Navigation
+## Yandex Cloud
 
-- **Arrow Right / Space**: Next slide
-- **Arrow Left**: Previous slide
-- **Home**: First slide
-- **End**: Last slide
-- **Click indicators**: Jump to specific slide
-- **Navigation buttons**: Click prev/next buttons
+Set in `.env`:
 
-## Slide Structure
+- `YANDEX_API_KEY` **or** (`YANDEX_IAM_TOKEN` + `YANDEX_FOLDER_ID`)
+- Optional overrides: `YANDEX_OCR_URL`, `YANDEX_GPT_URL`, `YANDEX_GPT_MODEL`
 
-The presentation follows seed stage pitch guidelines:
+Without credentials the processor runs in **mock mode** (deterministic invoice-like OCR/LLM output) so local development works offline.
 
-1. **Title Slide** - Company name and one-liner
-2. **What We Do** - Problem, solution, and example
-3. **Team** - Founder and team member bios
-4. **Traction** - Key metrics with time context
-5. **Unique Insights** - Non-obvious learnings
-6. **Market Size** - Bottom-up calculation
-7. **The Ask** - Funding amount and milestones
+## Project map
 
-## Customization
+| Path | Purpose |
+|------|---------|
+| `src/lib/yandex-ai.service.ts` | OCR + YandexGPT wrapper |
+| `src/lib/document-processor.ts` | Async pipeline: OCR → LLM → validate → export |
+| `src/lib/queue.ts` | BullMQ / inline queue |
+| `src/lib/integrations.ts` | Signed webhook sender + CRM templates |
+| `src/app/api/v1/documents/upload` | Upload API |
+| `src/app/api/v1/ingest/[pipeline_id]` | Public ingest webhook |
+| `prompts/PRD.md` | Full product requirements |
 
-### Adding New Slides
+## Compliance notes
 
-1. Create a new component in `src/slides/YourSlide.js`
-2. Import and use the slide styles from `src/slides/Slide.css`
-3. Add your slide to `src/slides/slides.js`:
-
-```javascript
-import YourSlide from './YourSlide';
-
-const slides = [
-  // ... existing slides
-  {
-    id: 'your-slide',
-    component: YourSlide,
-    title: 'Your Slide Title'
-  }
-];
-```
-
-### Editing Slide Content
-
-Edit the individual slide files in `src/slides/` to customize:
-- Text content
-- Images and media
-- Layout and styling
-
-### Customizing Design
-
-- **Colors**: Edit CSS variables in `src/App.css`
-- **Typography**: Modify font sizes and weights in design tokens
-- **Layout**: Adjust component styles in `src/components/Presentation.css`
-- **Slide styles**: Customize in `src/slides/Slide.css`
-
-## Design Guidelines
-
-Based on common pitch deck best practices:
-
-### What We Do
-- Customer pitch, not investor pitch
-- 100% accurate, 50% clear
-- Use concrete examples
-
-### Team
-- Highlight relevant experience
-- Show why you're uniquely positioned
-
-### Traction
-- Always include time context
-- Show real progress (not fake work)
-- Focus on momentum
-
-### Unique Insights
-- Non-obvious learnings only
-- Support with specific data
-- Avoid generic statements
-
-### Market Size
-- Use bottom-up calculations
-- Show your data sources
-- Be realistic
-
-### The Ask
-- Specific funding amount
-- Clear milestones
-- Revenue/usage targets
-
-## Project Structure
-
-```
-pres_monolit/
-├── public/
-│   └── index.html
-├── src/
-│   ├── components/
-│   │   ├── Presentation.js
-│   │   └── Presentation.css
-│   ├── slides/
-│   │   ├── TitleSlide.js
-│   │   ├── WhatWeDoSlide.js
-│   │   ├── TeamSlide.js
-│   │   ├── TractionSlide.js
-│   │   ├── UniqueInsightsSlide.js
-│   │   ├── MarketSizeSlide.js
-│   │   ├── AskSlide.js
-│   │   ├── Slide.css
-│   │   └── slides.js
-│   ├── App.js
-│   ├── App.css
-│   ├── index.js
-│   └── index.css
-├── package.json
-└── README.md
-```
-
-## Browser Support
-
-Works in all modern browsers:
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
-
-## License
-
-This is a template for your use. Customize freely for your presentations.
-
-## Credits
-
-Design system inspired by Monolit website.
-Pitch structure based on YC seed stage pitch guidelines.
+- Temp uploads are deleted from disk after processing.
+- Optional PII masking before LLM (`maskPii` on pipeline).
+- Designed for Yandex Cloud / 152-FZ deployment posture.
