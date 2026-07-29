@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users           User[]
+  toolConnections ToolConnection[]
+  invites         Invite[]
+  accessLogs      AccessLog[]
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         String    @default("MEMBER") // OWNER | ADMIN | MEMBER
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  grants     ToolGrant[]
+  accessLogs AccessLog[]
+
+  @@index([workspaceId])
+}
+
+model ToolConnection {
+  id               String    @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  kind             String // FIGMA | HIGGSFIELD
+  label            String
+  loginUrl         String
+  encryptedSession String?
+  sessionUpdatedAt DateTime?
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  grants     ToolGrant[]
+  accessLogs AccessLog[]
+
+  @@unique([workspaceId, kind])
+  @@index([workspaceId])
+}
+
+model ToolGrant {
+  id               String         @id @default(cuid())
+  userId           String
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  toolConnectionId String
+  toolConnection   ToolConnection @relation(fields: [toolConnectionId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
+
+  @@unique([userId, toolConnectionId])
+}
+
+model Invite {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  email       String
+  role        String    @default("MEMBER")
+  token       String    @unique
+  acceptedAt  DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId])
+}
+
+model AccessLog {
+  id               String          @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId           String?
+  user             User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  toolConnectionId String?
+  toolConnection   ToolConnection? @relation(fields: [toolConnectionId], references: [id], onDelete: SetNull)
+  action           String
+  metadata         String?
+  createdAt        DateTime        @default(now())
+
+  @@index([workspaceId, createdAt])
+}
