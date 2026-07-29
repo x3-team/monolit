@@ -1,16 +1,32 @@
 const { app, BrowserWindow, ipcMain, session } = require("electron");
 const path = require("path");
+const fs = require("fs");
 const Store = require("electron-store");
+
+const bakedConfig = loadBakedConfig();
 
 const store = new Store({
   name: "studiogate",
   defaults: {
-    serverUrl: process.env.STUDIOGATE_URL || "",
+    // Empty means "use baked-in production server"
+    serverUrl: "",
   },
 });
 
 /** @type {BrowserWindow | null} */
 let mainWindow = null;
+
+function loadBakedConfig() {
+  try {
+    const raw = fs.readFileSync(path.join(__dirname, "config.json"), "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return {
+      serverUrl: "https://gate.studiogate.app",
+      allowServerOverride: true,
+    };
+  }
+}
 
 function normalizeUrl(url) {
   return String(url || "")
@@ -18,8 +34,22 @@ function normalizeUrl(url) {
     .replace(/\/$/, "");
 }
 
+/**
+ * Priority:
+ * 1) STUDIOGATE_URL env (dev/testing)
+ * 2) user override in local store (optional)
+ * 3) baked-in config.json from the installer build
+ */
 function getServerUrl() {
-  return normalizeUrl(store.get("serverUrl") || process.env.STUDIOGATE_URL || "");
+  const fromEnv = normalizeUrl(process.env.STUDIOGATE_URL || "");
+  if (fromEnv) return fromEnv;
+
+  if (bakedConfig.allowServerOverride) {
+    const fromStore = normalizeUrl(store.get("serverUrl") || "");
+    if (fromStore) return fromStore;
+  }
+
+  return normalizeUrl(bakedConfig.serverUrl || "https://gate.studiogate.app");
 }
 
 function createSetupWindow() {
@@ -275,12 +305,9 @@ async function openTool(toolId) {
 }
 
 function boot() {
-  const serverUrl = getServerUrl();
-  if (!serverUrl) {
-    createSetupWindow();
-    return;
-  }
-  createMainWindow(serverUrl);
+  // Production UX: open login immediately on baked-in server.
+  // No manual "paste studio link" step for designers.
+  createMainWindow(getServerUrl());
 }
 
 app.whenReady().then(() => {
