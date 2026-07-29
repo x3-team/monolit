@@ -1,0 +1,17 @@
+services:
+  studiogate:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: file:/data/studiogate.db
+      JWT_SECRET: change-me-now
+      SESSION_SECRET: change-me-session-secret-32bytes!!
+      APP_URL: http://localhost:3001
+      NEXT_PUBLIC_APP_URL: http://localhost:3001
+    volumes:
+      - studiogate_data:/data
+    restart: unless-stopped
+
+volumes:
+  studiogate_data:
