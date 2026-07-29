@@ -102,7 +102,7 @@ export default function AppPage() {
     setMessage(null);
     if (!window.studioGate) {
       setError(
-        "Connect работает из desktop-приложения StudioGate. Для демо на сайте отметьте tool как connected через mock."
+        "Для реального Connect нужен desktop: npm run desktop. На сайте можно только Mark connected (demo)."
       );
       return;
     }
@@ -264,7 +264,7 @@ export default function AppPage() {
                     onClick={() => connectTool(tool)}
                     className="rounded-md border border-[var(--line)] px-3 py-2 text-sm"
                   >
-                    Connect (desktop)
+                    Connect team account
                   </button>
                   <button
                     onClick={() => mockConnect(tool)}

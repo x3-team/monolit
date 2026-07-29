@@ -83,3 +83,7 @@ Pilot: **9.9–15k ₽ for 2 weeks**
 ## Stack
 
 Next.js 15 · Prisma SQLite · JWT auth · Electron controlled browser
+
+## Internal pilot
+
+See **[PILOT.md](./PILOT.md)** for the fastest way to test on your own Figma team today.

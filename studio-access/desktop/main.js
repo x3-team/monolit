@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session } = require("electron");
+const { app, BrowserWindow, ipcMain, session, dialog } = require("electron");
 const path = require("path");
 
 const APP_URL = process.env.STUDIOGATE_URL || "http://localhost:3001";
@@ -18,40 +18,14 @@ function createMainWindow() {
     },
   });
 
-  mainWindow.loadURL(`${APP_URL}/app`);
+  mainWindow.loadURL(`${APP_URL}/login`);
 }
 
-/**
- * Admin connects a tool: login in isolated window, then capture cookies.
- */
-async function connectTool({ toolId, loginUrl, kind }) {
-  const partition = `persist:studiogate-connect-${kind}`;
-  const ses = session.fromPartition(partition, { cache: true });
-
-  const win = new BrowserWindow({
-    width: 1100,
-    height: 800,
-    title: `Connect ${kind}`,
-    webPreferences: {
-      session: ses,
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  });
-
-  await win.loadURL(loginUrl);
-
-  // Wait until user closes the window after logging in
-  await new Promise((resolve) => {
-    win.on("closed", resolve);
-  });
-
+async function captureStorage(ses, kind) {
   const cookies = await ses.cookies.get({});
-  if (!cookies.length) {
-    return { ok: false, error: "No cookies captured. Log in, then close the window." };
-  }
-
-  const payload = {
+  // Best-effort localStorage from an about:blank helper is unreliable across domains.
+  // We open a tiny hidden window on the tool origin after login via the connect window itself.
+  return {
     cookies: cookies.map((c) => ({
       name: c.name,
       value: c.value,
@@ -61,16 +35,129 @@ async function connectTool({ toolId, loginUrl, kind }) {
       httpOnly: c.httpOnly,
       expirationDate: c.expirationDate,
     })),
-    note: "Captured via StudioGate desktop",
+    kind,
+    capturedAt: new Date().toISOString(),
   };
+}
 
-  // Use main window cookies (auth) to call API
+/**
+ * Admin connects a tool: login in isolated window, press Save when ready.
+ */
+async function connectTool({ toolId, loginUrl, kind }) {
+  const partition = `persist:studiogate-connect-${kind}-${Date.now()}`;
+  const ses = session.fromPartition(partition, { cache: true });
+
+  const win = new BrowserWindow({
+    width: 1200,
+    height: 860,
+    title: `StudioGate Connect · ${kind} — log in to TEAM account, then click Save`,
+    webPreferences: {
+      session: ses,
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, "connect-preload.js"),
+    },
+  });
+
+  // Floating control window with Save / Cancel
+  const controls = new BrowserWindow({
+    width: 420,
+    height: 180,
+    parent: win,
+    modal: false,
+    resizable: false,
+    title: "StudioGate Connect",
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, "connect-controls-preload.js"),
+    },
+  });
+
+  controls.loadURL(
+    "data:text/html," +
+      encodeURIComponent(`<!doctype html>
+<html><body style="font-family:sans-serif;background:#171e26;color:#eef3f7;padding:16px">
+  <h3 style="margin:0 0 8px">Connect ${kind}</h3>
+  <p style="margin:0 0 12px;color:#93a1ae;font-size:13px">
+    1) Log into the <b>TEAM</b> account (not billing owner)<br/>
+    2) Wait until the tool UI loads<br/>
+    3) Click Save session
+  </p>
+  <button id="save" style="background:#3dd6c6;border:0;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer">Save session</button>
+  <button id="cancel" style="margin-left:8px;background:transparent;border:1px solid #2a3541;color:#eef3f7;padding:10px 14px;border-radius:8px;cursor:pointer">Cancel</button>
+  <script>
+    document.getElementById('save').onclick = () => window.connectControls.save();
+    document.getElementById('cancel').onclick = () => window.connectControls.cancel();
+  </script>
+</body></html>`)
+  );
+
+  await win.loadURL(loginUrl);
+
+  const decision = await new Promise((resolve) => {
+    const onSave = () => resolve("save");
+    const onCancel = () => resolve("cancel");
+    ipcMain.once("studiogate:connect-save", onSave);
+    ipcMain.once("studiogate:connect-cancel", onCancel);
+    win.on("closed", () => resolve("cancel"));
+  });
+
+  if (decision !== "save") {
+    try {
+      controls.close();
+    } catch {}
+    try {
+      win.close();
+    } catch {}
+    return { ok: false, error: "Connect cancelled" };
+  }
+
+  // Try read localStorage from the tool page
+  let localStorage = {};
+  try {
+    localStorage = await win.webContents.executeJavaScript(`
+      (() => {
+        const out = {};
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          out[k] = localStorage.getItem(k);
+        }
+        return out;
+      })()
+    `);
+  } catch {
+    localStorage = {};
+  }
+
+  const storage = await captureStorage(ses, kind);
+  storage.localStorage = localStorage;
+  storage.note = "Captured via StudioGate desktop Connect";
+
+  try {
+    controls.close();
+  } catch {}
+  try {
+    win.close();
+  } catch {}
+
+  if (!storage.cookies.length) {
+    return {
+      ok: false,
+      error: "No cookies captured. Make sure you fully logged in before Save.",
+    };
+  }
+
   const result = await mainWindow.webContents.executeJavaScript(
     `fetch(${JSON.stringify(`/api/tools/${toolId}/session`)}, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: ${JSON.stringify(JSON.stringify(payload))}
+      body: ${JSON.stringify(JSON.stringify({
+        cookies: storage.cookies,
+        note: storage.note,
+        localStorage: storage.localStorage,
+      }))}
     }).then(r => r.json().then(data => ({ status: r.status, data })))`
   );
 
@@ -97,35 +184,50 @@ async function openTool(toolId) {
 
   for (const cookie of toolSession.cookies || []) {
     try {
-      const url =
-        (cookie.secure === false ? "http://" : "https://") +
-        String(cookie.domain || "")
-          .replace(/^\./, "") +
-        (cookie.path || "/");
+      const host = String(cookie.domain || "").replace(/^\./, "");
+      if (!host) continue;
+      const url = `${cookie.secure === false ? "http" : "https"}://${host}${cookie.path || "/"}`;
       await ses.cookies.set({
         url,
         name: cookie.name,
         value: cookie.value,
         domain: cookie.domain,
         path: cookie.path || "/",
-        secure: cookie.secure,
-        httpOnly: cookie.httpOnly,
+        secure: Boolean(cookie.secure),
+        httpOnly: Boolean(cookie.httpOnly),
         expirationDate: cookie.expirationDate,
       });
-    } catch (e) {
-      // skip invalid cookie domain combos
+    } catch {
+      // skip invalid cookie
     }
   }
 
   const win = new BrowserWindow({
-    width: 1280,
-    height: 860,
+    width: 1400,
+    height: 900,
     title: `${tool.label} · StudioGate`,
     webPreferences: {
       session: ses,
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+
+  win.webContents.on("did-finish-load", async () => {
+    if (toolSession.localStorage && typeof toolSession.localStorage === "object") {
+      try {
+        await win.webContents.executeJavaScript(
+          `(() => {
+            const data = ${JSON.stringify(toolSession.localStorage)};
+            Object.entries(data).forEach(([k,v]) => {
+              try { localStorage.setItem(k, v); } catch(e) {}
+            });
+          })()`
+        );
+      } catch {
+        // ignore
+      }
+    }
   });
 
   await win.loadURL(tool.homeUrl || tool.loginUrl);
@@ -154,4 +256,8 @@ app.whenReady().then(() => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
+});
+
+app.on("activate", () => {
+  if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
 });

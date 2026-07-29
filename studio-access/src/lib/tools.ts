@@ -40,4 +40,5 @@ export type ToolSessionPayload = {
   cookies: StoredCookie[];
   capturedAt: string;
   note?: string;
+  localStorage?: Record<string, string | null>;
 };

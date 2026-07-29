@@ -13,7 +13,9 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:setup": "prisma db push && tsx prisma/seed.ts",
-    "desktop": "STUDIOGATE_URL=http://localhost:3001 electron desktop/main.js"
+    "desktop": "electron desktop/main.js",
+    "desktop:local": "STUDIOGATE_URL=http://localhost:3001 electron desktop/main.js",
+    "pilot": "npm run db:setup && npm run dev"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -21,6 +21,7 @@ const saveSchema = z.object({
       expirationDate: z.number().optional(),
     })
   ),
+  localStorage: z.record(z.string(), z.string().nullable()).optional(),
   note: z.string().optional(),
 });
 
@@ -39,6 +40,7 @@ export async function POST(request: Request, { params }: Params) {
       cookies: body.cookies,
       capturedAt: new Date().toISOString(),
       note: body.note,
+      localStorage: body.localStorage,
     };
 
     const updated = await prisma.toolConnection.update({
