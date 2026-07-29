@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+}
+
+enum DocumentStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  NEEDS_REVIEW
+}
+
+enum SchemaFieldType {
+  STRING
+  NUMBER
+  DATE
+  BOOLEAN
+}
+
+enum IntegrationType {
+  WEBHOOK
+  AMOCRM
+  BITRIX24
+  ONE_C
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  pipelines Pipeline[]
+  apiKeys   ApiKey[]
+  webhooks  OutgoingWebhook[]
+  documents Document[]
+  auditLogs AuditLog[]
+}
+
+model User {
+  id             String       @id @default(cuid())
+  email          String       @unique
+  passwordHash   String
+  name           String
+  role           UserRole     @default(MANAGER)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  uploadedDocuments Document[] @relation("UploadedBy")
+  auditLogs         AuditLog[]
+
+  @@index([organizationId])
+}
+
+model Pipeline {
+  id             String       @id @default(cuid())
+  name           String
+  description    String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  maskPii        Boolean      @default(false)
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  schemaFields DocumentSchemaField[]
+  documents    Document[]
+  webhooks     OutgoingWebhook[]
+
+  @@index([organizationId])
+}
+
+model DocumentSchemaField {
+  id               String          @id @default(cuid())
+  pipelineId       String
+  pipeline         Pipeline        @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  targetFieldName  String
+  dataType         SchemaFieldType @default(STRING)
+  description      String?
+  promptHint       String?
+  required         Boolean         @default(false)
+  systemFieldTarget String?
+  sortOrder        Int             @default(0)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@unique([pipelineId, targetFieldName])
+  @@index([pipelineId])
+}
+
+model Document {
+  id               String         @id @default(cuid())
+  organizationId   String
+  organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pipelineId       String
+  pipeline         Pipeline       @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  uploadedById     String?
+  uploadedBy       User?          @relation("UploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  originalFilename String
+  mimeType         String
+  fileSizeBytes    Int
+  storagePath      String?
+  status           DocumentStatus @default(PENDING)
+  ocrText          String?
+  extractedData    Json?
+  editedData       Json?
+  validationErrors Json?
+  confidenceScore  Float?
+  errorMessage     String?
+  source           String         @default("web_upload")
+  processedAt      DateTime?
+  exportedAt       DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([organizationId, status])
+  @@index([pipelineId])
+  @@index([createdAt])
+}
+
+model ApiKey {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  keyHash        String
+  keyPrefix      String
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([keyPrefix])
+}
+
+model OutgoingWebhook {
+  id             String          @id @default(cuid())
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pipelineId     String?
+  pipeline       Pipeline?       @relation(fields: [pipelineId], references: [id], onDelete: SetNull)
+  name           String
+  url            String
+  secret         String?
+  integrationType IntegrationType @default(WEBHOOK)
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([organizationId])
+  @@index([pipelineId])
+}
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action         String
+  entityType     String?
+  entityId       String?
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
+}

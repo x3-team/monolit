@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smartdoc-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: smartdoc
+      POSTGRES_PASSWORD: smartdoc
+      POSTGRES_DB: smartdoc
+    ports:
+      - "5432:5432"
+    volumes:
+      - smartdoc_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartdoc -d smartdoc"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: smartdoc-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - smartdoc_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  smartdoc_pg_data:
+  smartdoc_redis_data:

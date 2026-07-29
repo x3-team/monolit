@@ -1,0 +1,33 @@
+import type { Metadata } from "next";
+import { Fraunces, Source_Sans_3 } from "next/font/google";
+import "./globals.css";
+
+const display = Fraunces({
+  variable: "--font-display",
+  subsets: ["latin", "latin-ext"],
+});
+
+const body = Source_Sans_3({
+  variable: "--font-body",
+  subsets: ["latin", "latin-ext", "cyrillic"],
+});
+
+export const metadata: Metadata = {
+  title: "SmartDoc AI",
+  description:
+    "B2B document processing platform — OCR, LLM extraction, CRM/ERP delivery.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body className={`${display.variable} ${body.variable} antialiased`}>
+        {children}
+      </body>
+    </html>
+  );
+}

@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f3f6f8;
+  --foreground: #13212b;
+  --surface: #ffffff;
+  --sidebar: #edf2f4;
+  --muted: #e7eef1;
+  --muted-foreground: #5b6b75;
+  --border: #d5dee4;
+  --primary: #0f6d6a;
+  --primary-foreground: #f4fffe;
+  --secondary: #d9ebe9;
+  --secondary-foreground: #104845;
+  --accent: #0f6d6a;
+  --accent-soft: #d8efed;
+  --danger: #b42318;
+  --ring: #2a9d98;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(15, 109, 106, 0.12), transparent 34%),
+    radial-gradient(circle at 80% 0%, rgba(32, 78, 110, 0.1), transparent 28%),
+    linear-gradient(180deg, #f7fafb 0%, #eef3f5 100%);
+  color: var(--foreground);
+  font-family: var(--font-body), "Segoe UI", sans-serif;
+  min-height: 100vh;
+}
+
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+.hero-grid {
+  background-image:
+    linear-gradient(rgba(19, 33, 43, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(19, 33, 43, 0.04) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-line {
+  0%,
+  100% {
+    transform: scaleX(0.7);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.animate-rise {
+  animation: rise-in 0.7s ease-out both;
+}
+
+.animate-rise-delay {
+  animation: rise-in 0.8s ease-out 0.12s both;
+}
+
+.animate-pulse-line {
+  transform-origin: left;
+  animation: pulse-line 2.4s ease-in-out infinite;
+}
