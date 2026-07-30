@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { actionLabel, roleLabel, spendKindLabel } from "@/lib/i18n";
 
 type Tool = {
   id: string;
@@ -191,7 +192,7 @@ export default function AppPage() {
     setMessage(null);
     if (!window.studioGate) {
       setError(
-        "Для реального Connect нужен desktop: npm run desktop. На сайте можно только Mark connected (demo)."
+        "Для настоящего подключения нужен десктоп: npm run desktop. На сайте доступна только кнопка «Отметить подключённым» (демо)."
       );
       return;
     }
@@ -201,10 +202,10 @@ export default function AppPage() {
       kind: tool.kind,
     });
     if (!result.ok) {
-      setError(result.error || "Connect failed");
+      setError(result.error || "Не удалось подключить");
       return;
     }
-    setMessage(`${tool.label} connected`);
+    setMessage(`${tool.label} подключён`);
     await refresh();
   }
 
@@ -221,15 +222,15 @@ export default function AppPage() {
             path: "/",
           },
         ],
-        note: "Demo mock session — replace via desktop Connect for real use",
+        note: "Демо-сессия — для боя подключите через десктоп",
       }),
     });
     const data = await res.json();
     if (!res.ok) {
-      setError(data.error || "Failed");
+      setError(data.error || "Ошибка");
       return;
     }
-    setMessage(`${tool.label} marked connected (demo session)`);
+    setMessage(`${tool.label}: отмечен как подключённый (демо)`);
     await refresh();
   }
 
@@ -249,28 +250,28 @@ export default function AppPage() {
       const res = await fetch(`/api/tools/${tool.id}/session${qs}`);
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Open failed");
+        setError(data.error || "Не удалось открыть");
         return;
       }
       const projectLabel =
         projects.find((p) => p.id === projectId)?.name || data.projectName;
       setMessage(
         projectLabel
-          ? `Web demo: ${tool.label} открыт на проект «${projectLabel}». Реальное окно — в desktop.`
-          : `Web demo: доступ к ${tool.label} выдан.`
+          ? `Веб-демо: ${tool.label} открыт на проект «${projectLabel}». Настоящее окно — в десктоп-приложении.`
+          : `Веб-демо: доступ к ${tool.label} выдан.`
       );
       await refresh();
       return;
     }
 
     const result = await window.studioGate.openTool(tool.id, projectId);
-    if (!result.ok) setError(result.error || "Open failed");
+    if (!result.ok) setError(result.error || "Не удалось открыть");
     else {
       const projectLabel = projects.find((p) => p.id === projectId)?.name;
       setMessage(
         projectLabel
-          ? `Opened ${tool.label} · ${projectLabel}`
-          : `Opened ${tool.label}`
+          ? `Открыт ${tool.label} · ${projectLabel}`
+          : `Открыт ${tool.label}`
       );
     }
     await refresh();
@@ -291,10 +292,10 @@ export default function AppPage() {
     });
     const data = await res.json();
     if (!res.ok) {
-      setError(data.error || "Invite failed");
+      setError(data.error || "Не удалось пригласить");
       return;
     }
-    setMessage(`Invited ${data.member.email}`);
+    setMessage(`Приглашён ${data.member.email}`);
     setInviteName("");
     setInviteEmail("");
     await refresh();
@@ -306,7 +307,7 @@ export default function AppPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ revoke: true }),
     });
-    setMessage("Access revoked in one click");
+    setMessage("Доступ отозван одним кликом");
     await refresh();
   }
 
@@ -324,14 +325,14 @@ export default function AppPage() {
     });
     const data = await res.json();
     if (!res.ok) {
-      setError(data.error || "Project create failed");
+      setError(data.error || "Не удалось создать проект");
       return;
     }
     setProjectName("");
     setProjectClient("");
     setProjectBudget("");
     setSelectedProjectId(data.project.id);
-    setMessage(`Project «${data.project.name}» created`);
+    setMessage(`Проект «${data.project.name}» создан`);
     await refresh();
   }
 
@@ -349,11 +350,11 @@ export default function AppPage() {
     });
     const data = await res.json();
     if (!res.ok) {
-      setError(data.error || "Settings failed");
+      setError(data.error || "Не удалось сохранить настройки");
       return;
     }
     setApiKey("");
-    setMessage("Cost settings saved");
+    setMessage("Настройки затрат сохранены");
     await refresh();
   }
 
@@ -366,19 +367,19 @@ export default function AppPage() {
     });
     const data = await res.json();
     if (!res.ok) {
-      setError(data.error || "Sync failed");
+      setError(data.error || "Не удалось обновить затраты");
       return;
     }
     setCosts(data.report);
     setMessage(
       data.sync?.warning
-        ? `Synced (${data.sync.source}): ${data.sync.warning}`
-        : `Synced ${data.sync?.imported || 0} rows · mode ${data.sync?.source}`
+        ? `Обновлено (${data.sync.source === "demo" ? "демо" : data.sync.source}): ${data.sync.warning}`
+        : `Обновлено записей: ${data.sync?.imported || 0} · режим ${data.sync?.source === "demo" ? "демо-оценка" : data.sync?.source}`
     );
   }
 
   if (!user) {
-    return <main className="p-8 text-[var(--muted)]">Loading workspace…</main>;
+    return <main className="p-8 text-[var(--muted)]">Загрузка студии…</main>;
   }
 
   return (
@@ -389,15 +390,15 @@ export default function AppPage() {
             Studio<span className="text-[var(--accent)]">Gate</span>
           </p>
           <p className="text-sm text-[var(--muted)]">
-            {workspace} · {user.name} · {user.role}
-            {hasDesktop ? " · Desktop connected" : " · Web demo mode"}
+            {workspace} · {user.name} · {roleLabel(user.role)}
+            {hasDesktop ? " · десктоп подключён" : " · веб-демо"}
           </p>
         </div>
         <button
           onClick={logout}
           className="rounded-md border border-[var(--line)] px-3 py-2 text-sm"
         >
-          Log out
+          Выйти
         </button>
       </header>
 
@@ -415,9 +416,9 @@ export default function AppPage() {
       <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="font-display text-xl">Active project</h2>
+            <h2 className="font-display text-xl">Активный проект</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Перед Open Higgsfield выберите проект — кредиты спишутся на него
+              Перед открытием Higgsfield выберите проект — кредиты спишутся на него
               автоматически
             </p>
           </div>
@@ -426,7 +427,7 @@ export default function AppPage() {
             value={selectedProjectId}
             onChange={(e) => setSelectedProjectId(e.target.value)}
           >
-            <option value="">Select project…</option>
+            <option value="">Выберите проект…</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -447,14 +448,14 @@ export default function AppPage() {
               <div>
                 <h2 className="font-display text-xl">{tool.label}</h2>
                 <p className="mt-1 text-sm text-[var(--muted)]">
-                  {tool.connected ? "Connected" : "Not connected"}
+                  {tool.connected ? "Подключён" : "Не подключён"}
                   {tool.sessionUpdatedAt
-                    ? ` · ${new Date(tool.sessionUpdatedAt).toLocaleString()}`
+                    ? ` · ${new Date(tool.sessionUpdatedAt).toLocaleString("ru-RU")}`
                     : ""}
                 </p>
                 {tool.kind === "HIGGSFIELD" && (
                   <p className="mt-2 text-xs text-[var(--accent)]">
-                    Open requires a project (cost tracking)
+                    Для открытия нужен проект (учёт затрат)
                   </p>
                 )}
               </div>
@@ -467,7 +468,7 @@ export default function AppPage() {
                 onClick={() => openTool(tool)}
                 className="rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[#042421]"
               >
-                Open
+                Открыть
               </button>
               {isAdmin && (
                 <>
@@ -475,13 +476,13 @@ export default function AppPage() {
                     onClick={() => connectTool(tool)}
                     className="rounded-md border border-[var(--line)] px-3 py-2 text-sm"
                   >
-                    Connect team account
+                    Подключить командный аккаунт
                   </button>
                   <button
                     onClick={() => mockConnect(tool)}
                     className="rounded-md border border-[var(--line)] px-3 py-2 text-sm text-[var(--muted)]"
                   >
-                    Mark connected (demo)
+                    Отметить подключённым (демо)
                   </button>
                 </>
               )}
@@ -493,7 +494,7 @@ export default function AppPage() {
       {isAdmin && (
         <>
           <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
-            <h2 className="font-display text-xl">Projects</h2>
+            <h2 className="font-display text-xl">Проекты</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">
               Ценник на генерацию: бюджет проекта vs фактические AI-кредиты
             </p>
@@ -502,20 +503,20 @@ export default function AppPage() {
               className="mt-4 grid gap-3 md:grid-cols-4"
             >
               <input
-                placeholder="Project name"
+                placeholder="Название проекта"
                 className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2 md:col-span-1"
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 required
               />
               <input
-                placeholder="Client"
+                placeholder="Клиент"
                 className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2"
                 value={projectClient}
                 onChange={(e) => setProjectClient(e.target.value)}
               />
               <input
-                placeholder="Budget ₽"
+                placeholder="Бюджет ₽"
                 type="number"
                 min="0"
                 className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2"
@@ -523,7 +524,7 @@ export default function AppPage() {
                 onChange={(e) => setProjectBudget(e.target.value)}
               />
               <button className="rounded-md bg-[var(--accent-2)] px-3 py-2 font-semibold text-[#1d1400]">
-                Add project
+                Добавить проект
               </button>
             </form>
             <div className="mt-4 space-y-2">
@@ -536,7 +537,7 @@ export default function AppPage() {
                     <p className="font-medium">{p.name}</p>
                     <p className="text-[var(--muted)]">
                       {p.clientName || "—"}
-                      {p.budgetRub != null ? ` · budget ${p.budgetRub} ₽` : ""}
+                      {p.budgetRub != null ? ` · бюджет ${p.budgetRub} ₽` : ""}
                     </p>
                   </div>
                   <button
@@ -544,13 +545,13 @@ export default function AppPage() {
                     onClick={() => setSelectedProjectId(p.id)}
                     className="rounded-md border border-[var(--line)] px-3 py-1.5"
                   >
-                    Use for Open
+                    Выбрать для открытия
                   </button>
                 </div>
               ))}
               {!projects.length && (
                 <p className="text-sm text-[var(--muted)]">
-                  No projects yet — create one before opening Higgsfield.
+                  Пока нет проектов — создайте перед открытием Higgsfield.
                 </p>
               )}
             </div>
@@ -592,8 +593,8 @@ export default function AppPage() {
                   {costs?.month?.credits ?? 0} кредитов · курс{" "}
                   {costs?.creditPriceRub ?? creditPrice} ₽/cr
                   {costs?.costSyncMode === "demo"
-                    ? " · demo-оценка по времени Open"
-                    : " · Cloud API"}
+                    ? " · демо-оценка по времени открытия"
+                    : " · облачный API"}
                 </p>
                 {costs?.totals?.budgetRub ? (
                   <div className="mt-5">
@@ -625,7 +626,7 @@ export default function AppPage() {
               >
                 <p className="text-sm font-medium">Настройки курса</p>
                 <label className="text-sm">
-                  <span className="text-[var(--muted)]">₽ за 1 credit</span>
+                  <span className="text-[var(--muted)]">₽ за 1 кредит</span>
                   <input
                     type="number"
                     min="0.01"
@@ -644,13 +645,13 @@ export default function AppPage() {
                       setSyncMode(e.target.value === "api" ? "api" : "demo")
                     }
                   >
-                    <option value="demo">Demo · оценка по Open</option>
-                    <option value="api">Cloud API key</option>
+                    <option value="demo">Демо · оценка по времени открытия</option>
+                    <option value="api">Ключ облачного API</option>
                   </select>
                 </label>
                 <label className="text-sm">
                   <span className="text-[var(--muted)]">
-                    KEY_ID:KEY_SECRET (для api)
+                    Ключ KEY_ID:KEY_SECRET (для API)
                   </span>
                   <input
                     type="password"
@@ -691,7 +692,7 @@ export default function AppPage() {
                           {formatRub(p.costRub)} ₽
                         </p>
                         <p className="text-xs text-[var(--muted)]">
-                          {p.netCredits} cr
+                          {p.netCredits} кр.
                           {p.budgetRub != null
                             ? ` · бюджет ${formatRub(p.budgetRub)} ₽`
                             : " · бюджет не задан"}
@@ -744,7 +745,7 @@ export default function AppPage() {
               )}
               {(costs?.unallocatedCredits || 0) > 0 && (
                 <p className="text-sm text-amber-200/90">
-                  Вне проектов: {costs?.unallocatedCredits} cr (Open без
+                  Вне проектов: {costs?.unallocatedCredits} кр. (открытие без
                   выбранного проекта)
                 </p>
               )}
@@ -758,8 +759,8 @@ export default function AppPage() {
                 <ul className="mt-3 space-y-1 text-sm text-[var(--muted)]">
                   {costs.recent.slice(0, 12).map((e) => (
                     <li key={e.id}>
-                      {new Date(e.occurredAt).toLocaleString("ru-RU")} · {e.kind}{" "}
-                      · {e.credits} cr
+                      {new Date(e.occurredAt).toLocaleString("ru-RU")} ·{" "}
+                      {spendKindLabel(e.kind)} · {e.credits} кр.
                       {e.project ? ` · ${e.project.name}` : " · вне проекта"}
                       {e.user ? ` · ${e.user.email}` : ""}
                     </li>
@@ -770,20 +771,20 @@ export default function AppPage() {
           </section>
 
           <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
-            <h2 className="font-display text-xl">Invite freelancer</h2>
+            <h2 className="font-display text-xl">Пригласить фрилансера</h2>
             <form
               onSubmit={inviteMember}
               className="mt-4 grid gap-3 md:grid-cols-2"
             >
               <input
-                placeholder="Name"
+                placeholder="Имя"
                 className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2"
                 value={inviteName}
                 onChange={(e) => setInviteName(e.target.value)}
                 required
               />
               <input
-                placeholder="Email"
+                placeholder="Почта"
                 type="email"
                 className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2"
                 value={inviteEmail}
@@ -791,7 +792,7 @@ export default function AppPage() {
                 required
               />
               <input
-                placeholder="Temp password"
+                placeholder="Временный пароль"
                 className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2"
                 value={invitePassword}
                 onChange={(e) => setInvitePassword(e.target.value)}
@@ -816,13 +817,13 @@ export default function AppPage() {
                 ))}
               </div>
               <button className="rounded-md bg-[var(--accent-2)] px-3 py-2 font-semibold text-[#1d1400] md:col-span-2">
-                Create member access
+                Выдать доступ
               </button>
             </form>
           </section>
 
           <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
-            <h2 className="font-display text-xl">Team</h2>
+            <h2 className="font-display text-xl">Команда</h2>
             <div className="mt-4 space-y-3">
               {members.map((m) => (
                 <div
@@ -833,12 +834,12 @@ export default function AppPage() {
                     <p className="font-medium">
                       {m.name}{" "}
                       <span className="text-xs text-[var(--muted)]">
-                        {m.role}
+                        {roleLabel(m.role)}
                       </span>
                     </p>
                     <p className="text-sm text-[var(--muted)]">
-                      {m.email} · {m.tools.join(", ") || "no tools"}
-                      {m.revokedAt ? " · REVOKED" : ""}
+                      {m.email} · {m.tools.join(", ") || "нет инструментов"}
+                      {m.revokedAt ? " · ОТОЗВАН" : ""}
                     </p>
                   </div>
                   {m.role !== "OWNER" && !m.revokedAt && (
@@ -846,7 +847,7 @@ export default function AppPage() {
                       onClick={() => revokeMember(m.id)}
                       className="rounded-md border border-[var(--danger)] px-3 py-1.5 text-sm text-[var(--danger)]"
                     >
-                      Revoke
+                      Отозвать
                     </button>
                   )}
                 </div>
@@ -855,11 +856,12 @@ export default function AppPage() {
           </section>
 
           <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
-            <h2 className="font-display text-xl">Audit log</h2>
+            <h2 className="font-display text-xl">Журнал действий</h2>
             <ul className="mt-4 space-y-2 text-sm text-[var(--muted)]">
               {logs.map((l) => (
                 <li key={l.id}>
-                  {new Date(l.createdAt).toLocaleString()} · {l.action}
+                  {new Date(l.createdAt).toLocaleString("ru-RU")} ·{" "}
+                  {actionLabel(l.action)}
                   {l.user ? ` · ${l.user.email}` : ""}
                   {l.toolConnection ? ` · ${l.toolConnection.label}` : ""}
                 </li>
@@ -890,7 +892,7 @@ export default function AppPage() {
                   <div className="flex justify-between gap-3 text-sm">
                     <span>{p.name}</span>
                     <span className="font-medium">
-                      {formatRub(p.costRub)} ₽ · {p.netCredits} cr
+                      {formatRub(p.costRub)} ₽ · {p.netCredits} кр.
                     </span>
                   </div>
                   {p.budgetRub != null && (

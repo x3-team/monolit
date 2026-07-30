@@ -57,7 +57,7 @@ export async function attributeCredits(opts: {
       externalId: opts.tx.id,
       kind,
       credits,
-      description: opts.tx.description || "Unallocated (no Open session)",
+      description: opts.tx.description || "Вне проекта (не было открытия)",
       occurredAt,
       rawJson: opts.tx.raw ? JSON.stringify(opts.tx.raw) : null,
     });
@@ -158,7 +158,7 @@ export async function estimateDemoSpendForSessions(workspaceId: string) {
       externalId,
       kind: "estimate",
       credits,
-      description: `Auto estimate · ${minutes} min Open`,
+      description: `Автооценка · ${minutes} мин открытия`,
       occurredAt: session.endedAt || new Date(),
       rawJson: null,
     });

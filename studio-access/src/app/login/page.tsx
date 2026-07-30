@@ -22,11 +22,11 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Login failed");
+      if (!res.ok) throw new Error(data.error || "Не удалось войти");
       router.push("/app");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : "Не удалось войти");
     } finally {
       setBusy(false);
     }
@@ -37,33 +37,45 @@ export default function LoginPage() {
       <Link href="/" className="mb-8 font-display text-2xl">
         Studio<span className="text-[var(--accent)]">Gate</span>
       </Link>
-      <h1 className="font-display text-3xl">Log in</h1>
+      <h1 className="font-display text-3xl">Вход</h1>
       <p className="mt-2 text-[var(--muted)]">
-        Demo: owner@studio.local / owner123456
+        Демо: owner@studio.local / owner123456
       </p>
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
-        <input
-          className="w-full rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          type="email"
-          required
-        />
-        <input
-          className="w-full rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          type="password"
-          required
-        />
+        <label className="block space-y-1 text-sm">
+          <span>Почта</span>
+          <input
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            type="email"
+            required
+          />
+        </label>
+        <label className="block space-y-1 text-sm">
+          <span>Пароль</span>
+          <input
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            type="password"
+            required
+          />
+        </label>
         {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
         <button
           disabled={busy}
           className="w-full rounded-md bg-[var(--accent)] py-2 font-semibold text-[#042421]"
         >
-          {busy ? "…" : "Enter workspace"}
+          {busy ? "Входим…" : "Войти в студию"}
         </button>
       </form>
+      <p className="mt-6 text-sm text-[var(--muted)]">
+        Нет аккаунта?{" "}
+        <Link href="/register" className="text-[var(--accent)]">
+          Создать студию
+        </Link>
+      </p>
     </main>
   );
 }

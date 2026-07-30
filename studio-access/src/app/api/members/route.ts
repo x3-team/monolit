@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     const email = body.email.toLowerCase();
 
     if (await prisma.user.findUnique({ where: { email } })) {
-      return err("User already exists", 409);
+      return err("Пользователь уже существует", 409);
     }
 
     const { hashPassword } = await import("@/lib/auth");
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       201
     );
   } catch (error) {
-    if (error instanceof z.ZodError) return err("Invalid payload", 400);
+    if (error instanceof z.ZodError) return err("Некорректные данные", 400);
     return handleError(error);
   }
 }

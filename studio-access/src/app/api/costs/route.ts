@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const report = await projectCostReport(session.workspaceId);
     return ok({ sync: result, report });
   } catch (error) {
-    if (error instanceof z.ZodError) return err("Invalid sync payload", 400);
+    if (error instanceof z.ZodError) return err("Некорректные данные синхронизации", 400);
     return handleError(error);
   }
 }
@@ -97,7 +97,7 @@ export async function PATCH(request: Request) {
       },
     });
   } catch (error) {
-    if (error instanceof z.ZodError) return err("Invalid settings", 400);
+    if (error instanceof z.ZodError) return err("Некорректные настройки", 400);
     return handleError(error);
   }
 }

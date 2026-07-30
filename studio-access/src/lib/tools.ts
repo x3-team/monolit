@@ -15,14 +15,16 @@ export const TOOL_CATALOG: Record<
     label: "Figma",
     loginUrl: "https://www.figma.com/login",
     homeUrl: "https://www.figma.com/files",
-    pitch: "Design files for the whole crew without sharing the owner password.",
+    pitch:
+      "Файлы дизайна для всей команды — без передачи пароля владельца.",
   },
   HIGGSFIELD: {
     kind: "HIGGSFIELD",
     label: "Higgsfield",
     loginUrl: "https://higgsfield.ai/",
     homeUrl: "https://higgsfield.ai/",
-    pitch: "AI generation credits stay on the team account — freelancers never see billing.",
+    pitch:
+      "Кредиты генераций остаются на командном аккаунте — фрилансер не видит биллинг.",
   },
 };
 

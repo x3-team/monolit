@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const body = registerSchema.parse(await request.json());
     const email = body.email.toLowerCase();
     if (await prisma.user.findUnique({ where: { email } })) {
-      return err("Email already registered", 409);
+      return err("Такой email уже зарегистрирован", 409);
     }
 
     const passwordHash = await hashPassword(body.password);
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
 
     return ok({ user: session, workspace: { id: workspace.id, name: workspace.name } }, 201);
   } catch (error) {
-    if (error instanceof z.ZodError) return err("Invalid payload", 400);
+    if (error instanceof z.ZodError) return err("Некорректные данные", 400);
     return handleError(error);
   }
 }

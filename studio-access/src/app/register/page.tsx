@@ -24,11 +24,11 @@ export default function RegisterPage() {
         body: JSON.stringify({ studioName, name, email, password }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
+      if (!res.ok) throw new Error(data.error || "Не удалось создать студию");
       router.push("/app");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed");
+      setError(err instanceof Error ? err.message : "Не удалось создать студию");
     } finally {
       setBusy(false);
     }
@@ -39,23 +39,26 @@ export default function RegisterPage() {
       <Link href="/" className="mb-8 font-display text-2xl">
         Studio<span className="text-[var(--accent)]">Gate</span>
       </Link>
-      <h1 className="font-display text-3xl">Create studio</h1>
+      <h1 className="font-display text-3xl">Создать студию</h1>
+      <p className="mt-2 text-sm text-[var(--muted)]">
+        Рабочее пространство для доступов и учёта AI-затрат
+      </p>
       <form onSubmit={onSubmit} className="mt-8 space-y-3">
-        {[
-          ["Studio name", studioName, setStudioName, "text"],
-          ["Your name", name, setName, "text"],
-          ["Email", email, setEmail, "email"],
-          ["Password", password, setPassword, "password"],
-        ].map(([label, value, setter, type]) => (
-          <label key={label as string} className="block space-y-1 text-sm">
-            <span>{label as string}</span>
+        {(
+          [
+            ["Название студии", studioName, setStudioName, "text"],
+            ["Ваше имя", name, setName, "text"],
+            ["Почта", email, setEmail, "email"],
+            ["Пароль", password, setPassword, "password"],
+          ] as const
+        ).map(([label, value, setter, type]) => (
+          <label key={label} className="block space-y-1 text-sm">
+            <span>{label}</span>
             <input
               className="w-full rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2"
-              value={value as string}
-              onChange={(e) =>
-                (setter as (v: string) => void)(e.target.value)
-              }
-              type={type as string}
+              value={value}
+              onChange={(e) => setter(e.target.value)}
+              type={type}
               required
               minLength={type === "password" ? 8 : undefined}
             />
@@ -66,9 +69,15 @@ export default function RegisterPage() {
           disabled={busy}
           className="w-full rounded-md bg-[var(--accent)] py-2 font-semibold text-[#042421]"
         >
-          {busy ? "…" : "Create workspace"}
+          {busy ? "Создаём…" : "Создать пространство"}
         </button>
       </form>
+      <p className="mt-6 text-sm text-[var(--muted)]">
+        Уже есть аккаунт?{" "}
+        <Link href="/login" className="text-[var(--accent)]">
+          Войти
+        </Link>
+      </p>
     </main>
   );
 }

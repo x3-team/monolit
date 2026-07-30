@@ -15,7 +15,7 @@ export async function POST(request: Request) {
       where: { email: body.email.toLowerCase() },
     });
     if (!user || user.revokedAt || !(await verifyPassword(body.password, user.passwordHash))) {
-      return err("Invalid email or password", 401);
+      return err("Неверный email или пароль", 401);
     }
     const session = {
       id: user.id,
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     await setAuthCookie(await createToken(session));
     return ok({ user: session });
   } catch (error) {
-    if (error instanceof z.ZodError) return err("Invalid payload", 400);
+    if (error instanceof z.ZodError) return err("Некорректные данные", 400);
     return handleError(error);
   }
 }

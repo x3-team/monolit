@@ -105,7 +105,7 @@ export async function syncWorkspaceCosts(workspaceId: string, opts?: {
     where: { workspaceId, kind: "HIGGSFIELD" },
   });
   if (!tool) {
-    return { ok: false as const, error: "Higgsfield tool not configured" };
+    return { ok: false as const, error: "Инструмент Higgsfield не настроен" };
   }
 
   let imported = 0;
@@ -126,7 +126,7 @@ export async function syncWorkspaceCosts(workspaceId: string, opts?: {
     if (!key) {
       return {
         ok: false as const,
-        error: "Cloud API key missing — save KEY_ID:KEY_SECRET in cost settings",
+        error: "Нет ключа облачного API — сохраните KEY_ID:KEY_SECRET в настройках затрат",
       };
     }
     const txs = await fetchCloudTransactions(key);
@@ -144,7 +144,7 @@ export async function syncWorkspaceCosts(workspaceId: string, opts?: {
         source,
         imported,
         warning:
-          "Cloud transactions endpoint returned empty — showing session estimates. Paste export JSON or wait for API support.",
+          "Облачный API не вернул транзакции — показаны оценки по сессиям. Можно вставить JSON-экспорт позже.",
       };
     }
     source = "api";

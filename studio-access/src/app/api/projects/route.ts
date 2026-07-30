@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     });
     return ok({ project }, 201);
   } catch (error) {
-    if (error instanceof z.ZodError) return err("Invalid project", 400);
+    if (error instanceof z.ZodError) return err("Некорректные данные проекта", 400);
     return handleError(error);
   }
 }

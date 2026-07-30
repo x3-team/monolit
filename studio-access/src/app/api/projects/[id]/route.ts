@@ -20,7 +20,7 @@ export async function PATCH(request: Request, { params }: Params) {
     const existing = await prisma.project.findFirst({
       where: { id, workspaceId: session.workspaceId },
     });
-    if (!existing) return err("Project not found", 404);
+    if (!existing) return err("Проект не найден", 404);
 
     const project = await prisma.project.update({
       where: { id },
@@ -35,7 +35,7 @@ export async function PATCH(request: Request, { params }: Params) {
     });
     return ok({ project });
   } catch (error) {
-    if (error instanceof z.ZodError) return err("Invalid payload", 400);
+    if (error instanceof z.ZodError) return err("Некорректные данные", 400);
     return handleError(error);
   }
 }

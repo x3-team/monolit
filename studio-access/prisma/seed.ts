@@ -15,35 +15,35 @@ async function main() {
         data: [
           {
             workspaceId: existing.workspaceId,
-            name: "Nike spring cutdowns",
+            name: "Nike — весенние нарезки",
             clientName: "Nike",
             budgetRub: 120000,
           },
           {
             workspaceId: existing.workspaceId,
-            name: "Bank app motion pack",
-            clientName: "Fintech",
+            name: "Моушн-пакет для банка",
+            clientName: "Финтех",
             budgetRub: 80000,
           },
         ],
       });
-      console.log("Added demo projects to existing workspace");
+      console.log("Добавлены демо-проекты в существующую студию");
     }
-    console.log("Demo already seeded:", email, "/ owner123456");
+    console.log("Демо уже есть:", email, "/ owner123456");
     return;
   }
 
   const passwordHash = await hashPassword("owner123456");
   const workspace = await prisma.workspace.create({
     data: {
-      name: "Demo Creative Studio",
+      name: "Демо креативная студия",
       creditPriceRub: 2,
       costSyncMode: "demo",
       users: {
         create: [
           {
             email,
-            name: "Studio Owner",
+            name: "Владелец студии",
             passwordHash,
             role: "OWNER",
           },
@@ -66,13 +66,13 @@ async function main() {
       projects: {
         create: [
           {
-            name: "Nike spring cutdowns",
+            name: "Nike — весенние нарезки",
             clientName: "Nike",
             budgetRub: 120000,
           },
           {
-            name: "Bank app motion pack",
-            clientName: "Fintech",
+            name: "Моушн-пакет для банка",
+            clientName: "Финтех",
             budgetRub: 80000,
           },
         ],
@@ -85,7 +85,7 @@ async function main() {
   const freelancer = await prisma.user.create({
     data: {
       email: "freelancer@studio.local",
-      name: "Demo Freelancer",
+      name: "Демо фрилансер",
       passwordHash: freelancerHash,
       role: "MEMBER",
       workspaceId: workspace.id,
@@ -97,12 +97,12 @@ async function main() {
     },
   });
 
-  console.log("Seeded StudioGate demo");
-  console.log("Owner:", email, "/ owner123456");
-  console.log("Freelancer:", freelancer.email, "/ freelancer123");
-  console.log("Workspace:", workspace.name);
+  console.log("Сиды StudioGate готовы");
+  console.log("Владелец:", email, "/ owner123456");
+  console.log("Фрилансер:", freelancer.email, "/ freelancer123");
+  console.log("Студия:", workspace.name);
   console.log(
-    "Projects:",
+    "Проекты:",
     workspace.projects.map((p) => p.name).join(", ")
   );
 }

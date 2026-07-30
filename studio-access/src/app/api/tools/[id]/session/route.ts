@@ -34,7 +34,7 @@ export async function POST(request: Request, { params }: Params) {
     const tool = await prisma.toolConnection.findFirst({
       where: { id, workspaceId: session.workspaceId },
     });
-    if (!tool) return err("Tool not found", 404);
+    if (!tool) return err("Инструмент не найден", 404);
 
     const payload: ToolSessionPayload = {
       cookies: body.cookies,
@@ -70,7 +70,7 @@ export async function POST(request: Request, { params }: Params) {
       },
     });
   } catch (error) {
-    if (error instanceof z.ZodError) return err("Invalid payload", 400);
+    if (error instanceof z.ZodError) return err("Некорректные данные", 400);
     return handleError(error);
   }
 }
@@ -86,20 +86,20 @@ export async function GET(request: Request, { params }: Params) {
     const tool = await prisma.toolConnection.findFirst({
       where: { id, workspaceId: session.workspaceId, isActive: true },
     });
-    if (!tool) return err("Tool not found", 404);
+    if (!tool) return err("Инструмент не найден", 404);
 
     if (session.role === "MEMBER") {
       const grant = await prisma.toolGrant.findFirst({
         where: { userId: session.id, toolConnectionId: id },
       });
-      if (!grant) return err("No access to this tool", 403);
+      if (!grant) return err("Нет доступа к этому инструменту", 403);
     }
 
     const user = await prisma.user.findUnique({ where: { id: session.id } });
-    if (!user || user.revokedAt) return err("Account revoked", 403);
+    if (!user || user.revokedAt) return err("Аккаунт отозван", 403);
 
     if (!tool.encryptedSession) {
-      return err("Owner has not connected this tool yet", 409);
+      return err("Владелец ещё не подключил этот инструмент", 409);
     }
 
     let usageSessionId: string | null = null;
@@ -107,7 +107,7 @@ export async function GET(request: Request, { params }: Params) {
 
     if (tool.kind === "HIGGSFIELD") {
       if (!projectId) {
-        return err("Select a project before opening Higgsfield", 400);
+        return err("Перед открытием Higgsfield выберите проект", 400);
       }
       const project = await prisma.project.findFirst({
         where: {
@@ -116,7 +116,7 @@ export async function GET(request: Request, { params }: Params) {
           isArchived: false,
         },
       });
-      if (!project) return err("Project not found", 404);
+      if (!project) return err("Проект не найден", 404);
 
       // Close previous open sessions for this user+tool (one active window per person)
       await prisma.usageSession.updateMany({
@@ -181,7 +181,7 @@ export async function DELETE(_request: Request, { params }: Params) {
     const tool = await prisma.toolConnection.findFirst({
       where: { id, workspaceId: session.workspaceId },
     });
-    if (!tool) return err("Tool not found", 404);
+    if (!tool) return err("Инструмент не найден", 404);
 
     await prisma.toolConnection.update({
       where: { id },

@@ -20,8 +20,8 @@ export async function PATCH(request: Request, { params }: Params) {
     const member = await prisma.user.findFirst({
       where: { id, workspaceId: session.workspaceId },
     });
-    if (!member) return err("Member not found", 404);
-    if (member.role === "OWNER") return err("Cannot modify owner this way", 400);
+    if (!member) return err("Участник не найден", 404);
+    if (member.role === "OWNER") return err("Владельца так изменить нельзя", 400);
 
     if (body.revoke) {
       await prisma.user.update({
@@ -74,7 +74,7 @@ export async function PATCH(request: Request, { params }: Params) {
       },
     });
   } catch (error) {
-    if (error instanceof z.ZodError) return err("Invalid payload", 400);
+    if (error instanceof z.ZodError) return err("Некорректные данные", 400);
     return handleError(error);
   }
 }

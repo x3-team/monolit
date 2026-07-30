@@ -10,9 +10,9 @@ export function err(message: string, status = 400) {
 
 export function handleError(error: unknown) {
   if (error instanceof Error) {
-    if (error.message === "UNAUTHORIZED") return err("Unauthorized", 401);
-    if (error.message === "FORBIDDEN") return err("Forbidden", 403);
+    if (error.message === "UNAUTHORIZED") return err("Нужна авторизация", 401);
+    if (error.message === "FORBIDDEN") return err("Недостаточно прав", 403);
   }
   console.error(error);
-  return err(error instanceof Error ? error.message : "Server error", 500);
+  return err(error instanceof Error ? error.message : "Ошибка сервера", 500);
 }

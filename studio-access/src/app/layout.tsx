@@ -1,21 +1,25 @@
 import type { Metadata } from "next";
-import { Fraunces, Manrope } from "next/font/google";
+import { Onest, Unbounded } from "next/font/google";
 import "./globals.css";
 
-const display = Fraunces({
-  subsets: ["latin", "latin-ext"],
+/** Заголовки — выразительный бесплатный шрифт с кириллицей */
+const display = Unbounded({
+  subsets: ["latin", "cyrillic"],
   variable: "--font-display",
+  weight: ["400", "500", "600", "700"],
 });
 
-const body = Manrope({
-  subsets: ["latin", "latin-ext", "cyrillic"],
+/** Текст интерфейса */
+const body = Onest({
+  subsets: ["latin", "cyrillic"],
   variable: "--font-body",
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "StudioGate",
+  title: "StudioGate — доступы Figma и Higgsfield без паролей",
   description:
-    "Give freelancers Figma & Higgsfield access without sharing passwords. One-click revoke.",
+    "Выдавайте фрилансерам доступ к Figma и Higgsfield без передачи паролей. Отзыв в один клик. Учёт AI-затрат по проектам.",
 };
 
 export default function RootLayout({
