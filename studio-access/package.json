@@ -1,0 +1,93 @@
+{
+  "name": "studiogate",
+  "version": "0.1.0",
+  "private": true,
+  "description": "StudioGate — Figma & Higgsfield access for creative teams without password sharing",
+  "author": "StudioGate",
+  "main": "desktop/main.js",
+  "scripts": {
+    "dev": "next dev --turbopack -p 3001",
+    "build": "next build",
+    "prestart": "node scripts/check-env.mjs",
+    "start": "next start -p 3001",
+    "check:env": "node scripts/check-env.mjs",
+    "lint": "eslint .",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:setup": "prisma db push && tsx prisma/seed.ts",
+    "desktop": "electron desktop/main.js",
+    "desktop:local": "STUDIOGATE_URL=http://localhost:3001 electron desktop/main.js",
+    "pilot": "npm run db:setup && npm run dev",
+    "dist:mac": "electron-builder --mac --dir",
+    "dist:win": "electron-builder --win nsis portable",
+    "dist:linux": "electron-builder --linux AppImage",
+    "dist": "electron-builder --mac --win --linux"
+  },
+  "build": {
+    "appId": "app.studiogate.desktop",
+    "productName": "StudioGate",
+    "copyright": "Copyright © StudioGate",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/**/*",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "desktop/main.js"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": ["dmg", "zip"],
+      "hardenedRuntime": false
+    },
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "category": "Office"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false
+    }
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^3.0.3",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "electron-store": "^8.2.0",
+    "jose": "^6.2.4",
+    "lucide-react": "^1.27.0",
+    "next": "15.5.22",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@electron/packager": "^19.1.0",
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.22",
+    "prisma": "^5.22.0",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.1",
+    "typescript": "^5"
+  }
+}
