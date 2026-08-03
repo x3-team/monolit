@@ -6,6 +6,7 @@ import type { ToolSessionPayload } from "@/lib/tools";
 import { TOOL_CATALOG } from "@/lib/tools";
 import type { ToolKind } from "@/lib/roles";
 import { err, handleError, ok } from "@/lib/api";
+import { assertTrustedOrigin } from "@/lib/origin";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,6 +28,7 @@ const saveSchema = z.object({
 
 export async function POST(request: Request, { params }: Params) {
   try {
+    assertTrustedOrigin(request);
     const session = await requireAdmin();
     const { id } = await params;
     const body = saveSchema.parse(await request.json());
@@ -174,8 +176,9 @@ export async function GET(request: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(request: Request, { params }: Params) {
   try {
+    assertTrustedOrigin(request);
     const session = await requireAdmin();
     const { id } = await params;
     const tool = await prisma.toolConnection.findFirst({

@@ -33,4 +33,4 @@ VOLUME ["/data"]
 
 EXPOSE 3001
 
-CMD ["sh", "-c", "npx prisma db push && npm run start"]
+CMD ["sh", "-c", "node scripts/check-env.mjs && npx prisma db push && npm run start"]

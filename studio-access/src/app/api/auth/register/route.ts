@@ -7,6 +7,7 @@ import {
 } from "@/lib/auth";
 import { TOOL_CATALOG } from "@/lib/tools";
 import { err, handleError, ok } from "@/lib/api";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 
 const registerSchema = z.object({
   studioName: z.string().min(1),
@@ -15,8 +16,16 @@ const registerSchema = z.object({
   password: z.string().min(8),
 });
 
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 60 * 60 * 1000;
+
 export async function POST(request: Request) {
   try {
+    const { allowed } = checkRateLimit(`register:${clientIp(request)}`, MAX_ATTEMPTS, WINDOW_MS);
+    if (!allowed) {
+      return err("Слишком много регистраций с этого адреса. Попробуйте позже.", 429);
+    }
+
     const body = registerSchema.parse(await request.json());
     const email = body.email.toLowerCase();
     if (await prisma.user.findUnique({ where: { email } })) {

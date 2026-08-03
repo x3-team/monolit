@@ -18,6 +18,9 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      // Electron main-process scripts: plain Node/CommonJS, not bundled by
+      // Next.js, so the browser/React lint rules don't apply here.
+      "desktop/**",
     ],
   },
 ];

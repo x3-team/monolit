@@ -1,8 +1,8 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypto";
+import { getSessionSecretRaw } from "@/lib/env";
 
 function key() {
-  const secret = process.env.SESSION_SECRET || "studiogate-session-secret-32chars!!";
-  return createHash("sha256").update(secret).digest();
+  return createHash("sha256").update(getSessionSecretRaw()).digest();
 }
 
 export function encryptJson(value: unknown): string {

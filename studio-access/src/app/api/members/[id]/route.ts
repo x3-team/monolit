@@ -2,6 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { err, handleError, ok } from "@/lib/api";
+import { assertTrustedOrigin } from "@/lib/origin";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -13,6 +14,7 @@ const patchSchema = z.object({
 
 export async function PATCH(request: Request, { params }: Params) {
   try {
+    assertTrustedOrigin(request);
     const session = await requireAdmin();
     const { id } = await params;
     const body = patchSchema.parse(await request.json());

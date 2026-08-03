@@ -4,6 +4,7 @@ import { projectCostReport } from "@/lib/costs";
 import { encryptApiKey, syncWorkspaceCosts } from "@/lib/higgsfield-sync";
 import { prisma } from "@/lib/prisma";
 import { err, handleError, ok } from "@/lib/api";
+import { assertTrustedOrigin } from "@/lib/origin";
 
 export async function GET() {
   try {
@@ -42,6 +43,7 @@ const syncSchema = z.object({
 /** Pull / estimate / import Higgsfield spend and attribute to Open→project sessions. */
 export async function POST(request: Request) {
   try {
+    assertTrustedOrigin(request);
     const session = await requireAdmin();
     const body = syncSchema.parse(await request.json().catch(() => ({})));
     const result = await syncWorkspaceCosts(session.workspaceId, {
@@ -64,6 +66,7 @@ const settingsSchema = z.object({
 
 export async function PATCH(request: Request) {
   try {
+    assertTrustedOrigin(request);
     const session = await requireAdmin();
     const body = settingsSchema.parse(await request.json());
     const data: {

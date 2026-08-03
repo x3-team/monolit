@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireSession } from "@/lib/auth";
 import { err, handleError, ok } from "@/lib/api";
+import { assertTrustedOrigin } from "@/lib/origin";
 
 export async function GET() {
   try {
@@ -39,6 +40,7 @@ const inviteSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    assertTrustedOrigin(request);
     const session = await requireAdmin();
     const body = inviteSchema.parse(await request.json());
     const email = body.email.toLowerCase();
@@ -102,7 +104,6 @@ export async function POST(request: Request) {
           role: user.role,
           tools: user.grants.map((g) => g.toolConnection.kind),
         },
-        temporaryPassword: body.password,
       },
       201
     );

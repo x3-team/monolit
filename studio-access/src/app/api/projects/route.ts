@@ -2,6 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireSession } from "@/lib/auth";
 import { err, handleError, ok } from "@/lib/api";
+import { assertTrustedOrigin } from "@/lib/origin";
 
 const createSchema = z.object({
   name: z.string().min(1).max(120),
@@ -24,6 +25,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    assertTrustedOrigin(request);
     const session = await requireAdmin();
     const body = createSchema.parse(await request.json());
     const project = await prisma.project.create({

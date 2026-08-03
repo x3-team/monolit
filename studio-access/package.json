@@ -8,7 +8,9 @@
   "scripts": {
     "dev": "next dev --turbopack -p 3001",
     "build": "next build",
+    "prestart": "node scripts/check-env.mjs",
     "start": "next start -p 3001",
+    "check:env": "node scripts/check-env.mjs",
     "lint": "eslint .",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",

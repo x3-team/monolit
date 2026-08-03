@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import type { Role } from "@/lib/roles";
 import { prisma } from "@/lib/prisma";
+import { getJwtSecretRaw } from "@/lib/env";
+import { AppError } from "@/lib/errors";
 
 const COOKIE = "studiogate_token";
 
@@ -15,9 +17,7 @@ export type SessionUser = {
 };
 
 function secret() {
-  return new TextEncoder().encode(
-    process.env.JWT_SECRET || "studiogate-dev-secret-change-me"
-  );
+  return new TextEncoder().encode(getJwtSecretRaw());
 }
 
 export async function hashPassword(password: string) {
@@ -77,12 +77,12 @@ export async function getSession(): Promise<SessionUser | null> {
 
 export async function requireSession() {
   const session = await getSession();
-  if (!session) throw new Error("UNAUTHORIZED");
+  if (!session) throw new AppError("Нужна авторизация", 401);
   return session;
 }
 
 export async function requireAdmin() {
   const session = await requireSession();
-  if (session.role === "MEMBER") throw new Error("FORBIDDEN");
+  if (session.role === "MEMBER") throw new AppError("Недостаточно прав", 403);
   return session;
 }
